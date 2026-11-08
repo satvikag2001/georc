@@ -175,3 +175,14 @@ def test_parse_country_returns_none_when_there_is_no_two_letter_guess(reply):
 
 def test_country_accuracy_is_a_percentage_and_missing_guesses_count_as_wrong():
     assert country_accuracy(["kg", None, "rs", "br"], ["kg", "my", "rs", "ar"]) == 50.0
+
+
+def test_generation_prompt_is_the_paper_fig21_text():
+    from georc.judge import load_template
+
+    prompt = load_template("gen_paper.txt")
+    assert prompt.startswith("You are a professional GeoGuessr player.")
+    # Fig. 21 has this sentence; the released generate.py prompt does not.
+    assert prompt.endswith(
+        "only generate as output the reasoning chain without annotations and titles."
+    )
