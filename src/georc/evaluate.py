@@ -5,6 +5,7 @@ Pair rows feed F1; round rows feed country accuracy.
 """
 
 import csv
+import json
 from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
@@ -54,6 +55,14 @@ def evaluate(
         "mean_points": fmean(s.n_candidate_points for s in scores),
     }
     return pair_rows, round_rows, summary
+
+
+def load_summaries(scores_dir: Path, tag: str) -> dict[str, dict]:
+    """Summaries written by score_chains.py for one judge tag (e.g. "paper_s0"), by chain set."""
+    summaries = {}
+    for path in sorted(scores_dir.glob(f"*__{tag}/summary.json")):
+        summaries[path.parent.name.removesuffix(f"__{tag}")] = json.loads(path.read_text())
+    return summaries
 
 
 def write_rows(path: Path, rows: list[dict]) -> None:

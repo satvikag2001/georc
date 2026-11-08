@@ -88,6 +88,12 @@ Before any download, record home usage, scratch contents and the director job co
 - [ ] The preflight job exits 0 on `embers`, and its log shows driver/CUDA, all 3 models loaded offline, and that pan-and-scan works (or the fallback is chosen).
 - [ ] Home usage has not grown by more than 0.5 GB.
 - [ ] Nothing exists outside `~/scratch/georc` and the uv paths.
+- [x] All 12 released chain sets have 500 chains each on PACE, plus all 500 images (carried over
+  from T2).
+- [x] Home footprint found and removed: uv's `~/.local/bin/python3.12` link and its
+  `~/.config/uv/uv-receipt.json` receipt. `common.sh` and `setup_env.sh` now prevent both.
+- Status 2026-11-08: env built (vLLM 0.32.0, torch 2.13 + CUDA 13.0), all assets downloaded.
+  Preflight job 15325036 is queued on embers; the G1 jobs 15325037-38 wait on it (afterok).
 **Verify:** `ssh pace 'tail -50 ~/scratch/georc/logs/georc-preflight-*.out'`; `ssh pace 'pace-quota | grep Home'`.
 **Depends on:** none (needs your HF token and Gemma license, Open Question 4).
 **Files:** `pace/common.sh`, `pace/setup_env.sh`, `pace/fetch_assets.sh`, `pace/submit.sh` (+ `sync.sh`),
@@ -102,7 +108,9 @@ noise. Write `results/validation.csv`, comparing ours with Table 2.
 - [ ] Each open model's F1 is within its paper 95% CI +/- 1.0, and the ranking holds.
 - [ ] Country accuracy is within +/- 3 points of Table 2. The hallucinated baseline's F1 is within +/- 2 of 18.13.
 - [ ] The F1 difference between the two judge seeds is reported. If G1 fails, try greedy decoding once, then the released-code rubric (`variant="repo"`); if both fail, stop and report.
-**Verify:** `uv run python scripts/report.py --validation results/validation.csv`, a table printed against the paper's values.
+**Verify:** `bash pace/pull.sh && uv run python scripts/report.py --validation runs/georc/scores`,
+which writes `results/validation.csv` and prints each G1 check as PASS or FAIL. (Gate checker and
+report implemented and unit-tested; awaiting the PACE jobs.)
 **Depends on:** T2, T3, T4.
 **Files:** `scripts/score_chains.py`, `src/georc/vllm_backend.py`, `pace/score.sbatch`, `results/validation.csv`.
 **Size:** M

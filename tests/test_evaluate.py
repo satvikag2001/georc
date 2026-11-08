@@ -4,7 +4,13 @@ import json
 import pytest
 
 from georc.data import load_pairs, load_rounds
-from georc.evaluate import directory_chain_set, evaluate, released_chain_set, write_rows
+from georc.evaluate import (
+    directory_chain_set,
+    evaluate,
+    load_summaries,
+    released_chain_set,
+    write_rows,
+)
 from georc.judge import FunctionJudge
 
 
@@ -55,6 +61,17 @@ def test_directory_chain_set_refuses_an_incomplete_folder(tiny_dataset, tmp_path
     (chains / "abc_1.txt").write_text("Cyrillic signage")
     with pytest.raises(FileNotFoundError, match="1 chains missing"):
         directory_chain_set(chains, rounds)
+
+
+def test_load_summaries_reads_one_summary_per_chain_set_for_a_tag(tmp_path):
+    for name, f1 in [("qwen", 29.0), ("gemma3_12b", 25.0)]:
+        folder = tmp_path / f"{name}__paper_s0"
+        folder.mkdir()
+        (folder / "summary.json").write_text(json.dumps({"name": name, "f1": f1}))
+    (tmp_path / "qwen__paper_s1").mkdir()  # other tags are ignored
+    (tmp_path / "qwen__paper_s1" / "summary.json").write_text(json.dumps({"f1": 99.0}))
+    summaries = load_summaries(tmp_path, "paper_s0")
+    assert {name: s["f1"] for name, s in summaries.items()} == {"qwen": 29.0, "gemma3_12b": 25.0}
 
 
 def test_write_rows_round_trips_through_csv(tmp_path):

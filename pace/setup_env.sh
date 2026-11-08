@@ -8,6 +8,12 @@ VLLM_VERSION="${VLLM_VERSION:?set VLLM_VERSION, e.g. VLLM_VERSION=0.11.0}"
 if [ ! -x "$GEORC_ROOT/bin/uv" ]; then
   curl -LsSf https://astral.sh/uv/install.sh |
     env UV_INSTALL_DIR="$GEORC_ROOT/bin" UV_NO_MODIFY_PATH=1 sh
+  # The installer always writes a receipt to ~/.config/uv; keep home untouched.
+  receipt="$HOME/.config/uv/uv-receipt.json"
+  if grep -q "\"install_prefix\":\"$GEORC_ROOT/bin\"" "$receipt" 2>/dev/null; then
+    rm "$receipt"
+    rmdir "$HOME/.config/uv" 2>/dev/null || true
+  fi
 fi
 uv python install 3.12
 [ -x "$PY" ] || uv venv --python 3.12 "$GEORC_VENV"
