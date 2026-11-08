@@ -1,0 +1,20 @@
+# Local assistant config (kept out of history by project rule)
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+
+# Data (ScanObjectNN terms of use) and experiment outputs
+data/
+runs/
+logs/
+
+# Upstream code has no license; recreated by scripts/setup_upstream.sh
+third_party/3dgpe/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
