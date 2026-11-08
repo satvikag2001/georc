@@ -17,7 +17,7 @@ from vllm import LLM
 from georc.country import build_country_prompt, parse_country
 from georc.data import load_rounds
 from georc.judge import build_prompt, load_template, parse_score
-from georc.models import GENERATORS, JUDGE, ModelSpec
+from georc.models import GENERATORS, ModelSpec
 
 
 def make_llm(spec: ModelSpec, max_model_len: int, images: int) -> LLM:
@@ -45,16 +45,18 @@ def sampling(llm: LLM, spec: ModelSpec, max_tokens: int):
 
 
 def run_judge() -> None:
-    llm = make_llm(JUDGE, max_model_len=8192, images=0)
-    params = sampling(llm, JUDGE, max_tokens=64)
+    from georc.vllm_backend import VLLMJudge
+
+    judge = VLLMJudge(seed=0)
+    print("sampling:", judge.params)
     first = "Cyrillic writing on the gas station sign || White painted bottoms of the trees"
-    prompts = [
-        build_prompt(first, "There is Cyrillic script on the sign at the gas station"),
-        build_prompt(first, "The sky is blue with some clouds"),
-        build_country_prompt("Cyrillic sign, poplar trees.\nConclusion: Kyrgyzstan, near Bishkek"),
-    ]
-    outs = llm.generate(prompts, params)
-    replies = [o.outputs[0].text for o in outs]
+    replies = judge.complete(
+        [
+            build_prompt(first, "There is Cyrillic script on the sign at the gas station"),
+            build_prompt(first, "The sky is blue with some clouds"),
+            build_country_prompt("Cyrillic sign, poplar trees.\nConclusion: Kyrgyzstan, Bishkek"),
+        ]
+    )
     print("match reply:", replies[0], "->", parse_score(replies[0]))
     print("mismatch reply:", replies[1], "->", parse_score(replies[1]))
     print("country reply:", replies[2], "->", parse_country(replies[2]))
