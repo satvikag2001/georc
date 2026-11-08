@@ -86,7 +86,7 @@ Before any download, record home usage, scratch contents and the director job co
 `results/pace_baseline.txt`, for the cleanup check.
 **Acceptance:**
 - [ ] The preflight job exits 0 on `embers`, and its log shows driver/CUDA, all 3 models loaded offline, and that pan-and-scan works (or the fallback is chosen).
-- [ ] Home usage has not grown by more than 0.5 GB.
+- [x] Home usage has not grown by more than 0.5 GB (14.4 GB before and after, 2026-11-08).
 - [ ] Nothing exists outside `~/scratch/georc` and the uv paths.
 - [x] All 12 released chain sets have 500 chains each on PACE, plus all 500 images (carried over
   from T2).
