@@ -14,7 +14,7 @@ class VLLMJudge:
     reproducible, which is what the on-disk cache assumes."""
 
     def __init__(
-        self, spec: ModelSpec = JUDGE, seed: int = 0, greedy: bool = False, max_model_len=16384
+        self, spec: ModelSpec = JUDGE, seed: int = 0, greedy: bool = False, max_model_len=32768
     ) -> None:
         self.llm = LLM(
             model=spec.repo,
