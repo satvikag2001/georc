@@ -67,8 +67,8 @@ src/georc/        data.py points.py judge.py score.py country.py vllm_backend.py
 scripts/          fetch_dataset.py score_chains.py generate_chains.py report.py
 pace/             common.sh setup_env.sh fetch_assets.sh sync.sh submit.sh pull.sh cleanup.sh *.sbatch
 tests/            test_*.py, with small fixtures under tests/fixtures/
-results/          committed: validation.csv, baseline.csv, summary.csv, REPORT.md, prompt_hashes.json,
-                  pace_baseline.txt, pace_cleanup.txt
+results/          committed: validation.csv, baseline.csv, summary.csv, REPORT.md, prompt_hashes.json;
+                  local only (gitignored, holds PACE account details): pace_baseline.txt, pace_cleanup.txt
 specs/            parked specs
 tasks/            plan.md, todo.md
 data/, runs/      gitignored: dataset copy, generated chains and judge outputs
