@@ -1,0 +1,3 @@
+Below is a reasoning chain written to guess where a photo was taken. Identify the single country given as the final location guess. If several countries are offered as the final guess, use the first one named. If no country is guessed, answer "XX".
+Respond only with a JSON object containing the ISO 3166-1 alpha-2 code, for example: {"country": "BR"}.
+REASONING CHAIN: {chain}

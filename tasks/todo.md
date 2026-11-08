@@ -61,9 +61,9 @@ than 5 characters.
   conclusion, which is compared to ground truth.
 - **Caching:** results are cached per judge call (keyed by prompt hash and seed), so reruns are free.
 **Acceptance:**
-- [ ] A toy pair with hand-computed scores gives the expected P, R and F1.
-- [ ] Parser edge cases: a `recall` key, extra text, no JSON, out-of-range numbers (clipped to 0-100).
-- [ ] An empty candidate or empty expert chain gives 0/0/0, as in the paper.
+- [x] A toy pair with hand-computed scores gives the expected P, R and F1.
+- [x] Parser edge cases: a `recall` key, extra text, no JSON, out-of-range numbers (clipped to 0-100).
+- [x] An empty candidate or empty expert chain gives 0/0/0, as in the paper.
 **Verify:** `uv run pytest -q tests/test_score.py`.
 **Depends on:** T2.
 **Files:** `src/georc/judge.py`, `src/georc/score.py`, `src/georc/country.py`, `tests/test_score.py`.
@@ -101,7 +101,7 @@ noise. Write `results/validation.csv`, comparing ours with Table 2.
 **Acceptance (G1):**
 - [ ] Each open model's F1 is within its paper 95% CI +/- 1.0, and the ranking holds.
 - [ ] Country accuracy is within +/- 3 points of Table 2. The hallucinated baseline's F1 is within +/- 2 of 18.13.
-- [ ] The F1 difference between the two judge seeds is reported. If G1 fails, try greedy decoding once; if it still fails, stop and report.
+- [ ] The F1 difference between the two judge seeds is reported. If G1 fails, try greedy decoding once, then the released-code rubric (`variant="repo"`); if both fail, stop and report.
 **Verify:** `uv run python scripts/report.py --validation results/validation.csv`, a table printed against the paper's values.
 **Depends on:** T2, T3, T4.
 **Files:** `scripts/score_chains.py`, `src/georc/vllm_backend.py`, `pace/score.sbatch`, `results/validation.csv`.
@@ -118,7 +118,9 @@ noise. Write `results/validation.csv`, comparing ours with Table 2.
 ### T6: Generation pipeline, 100-image pilot
 **Description:** `src/georc/generate.py` (vLLM):
 - **Model registry:** Gemma at temperature 1.0 with max 512 new tokens; Qwen at temperature 0.7 with max 32768.
-- **Prompt:** Fig. 21 verbatim.
+- **Prompt:** Fig. 21 verbatim. It has one more sentence than the released code's prompt ("Output each
+  point on a separate line ... without annotations and titles"). If G2 fails, the released prompt is
+  the documented fallback.
 - **Run behavior:** per-chain output files that are skipped if they exist (resume after
   preemption); a per-chain log of input and output tokens, whether it hit max tokens, and GPU time.
 

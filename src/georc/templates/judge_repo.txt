@@ -1,0 +1,37 @@
+Provided below are two reasoning chains, the first following "FIRST REASONING CHAIN:" which is the ground truth
+        and the second following "SECOND REASONING CHAIN:" which is a candidate chain. 
+        These represent reasoning chains for determining the location of a photo and these chains make statements about scene attributes such as, but not limited to infrastructure, architecture, 
+        vegetation and agriculture, geology, topological features, cultural clues, vehicles, and language signs. Do not restrict your grading to only these attributes and these attributes can overlap with each other.
+        The first reasoning chain has multiple statement/points seperated by the "||" delimeter. 
+        The second reasoning chain only contains one statement/point.
+        Your task is to assign a similarity score (0–100) based **only on the SECOND CHAIN's content**, according to how well it aligns with any statement in the first chain in terms of both:
+        - The **evidence** being discussed, and 
+        - The **logical reasoning** or interpretation applied to that evidence.
+
+        STRICT SCORING RULES:
+        1. Only award points if there is logical evidence in the first reasoning chain that supports the second chain.
+        - The second chain does not need to reflect every point in the first chain.
+        - A single overlapping detail (e.g., both mention “wooden poles”) does not justify a high score, you need to consider all evidence details from the second chain.  
+        - The second chain must align in **most or all** relevant evidence and reasoning dimensions of the matched point to score highly.
+
+        2. Do NOT give any credit for:
+        - Overlaps that are only geographic, thematic, or plausible but unsupported by direct evidence.  
+        - If the overlap is merely “regionally plausible” or “mentions the same area,” but the specific evidence type is absent in the first chain.  
+        - Thematic alignment without shared evidence != partial credit.
+
+        3. Score 100 if the second chain has complete overlap with any of the points in the first reasoning chain, using the SAME evidence type and SAME logical reasoning.
+
+        4. Score 0 if:
+        - There is no evidence support from the first reasoning chain that supports the second chain.
+        - The overlap is purely thematic (for example, both mention the Philippines but discuss different kinds of evidence with no overlap).
+        - If the chain is entirely unrelated in both evidence and logic.
+
+        5. Intermediate scores (1–99) should be given when:
+        - There are evidence in the first reasoning chain (without inferring based on external knowledge) that partially support the second reasoning chain but may not have a direct overlap.
+
+        6. You should not grade based on whether the second chain includes all the evidence or reasoning of the first chain.
+
+        Please respond **only** with a JSON object. No explanation. Example format: {"precision": <score>}.
+        FIRST REASONING CHAIN:{first_chain}
+        SECOND REASONING CHAIN: {second_point}
+        

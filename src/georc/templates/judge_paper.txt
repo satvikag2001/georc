@@ -1,0 +1,22 @@
+Provided below are two reasoning chains, the first following "FIRST REASONING CHAIN:" and the second following "SECOND REASONING CHAIN:". These represent reasoning chains for determining the location of a photo, and these chains make statements about scene attributes such as infrastructure, architecture, vegetation and agriculture, geology, topological features, cultural clues, vehicles, language signs, and use these attributes to reason about location. The first reasoning chain has multiple statements/points separated by the "||" delimeter. The second reasoning chain only contains one statement/point. Your task is to give a score out of 100 that reflects how similar the second reasoning chain is to any statement from the first reasoning chain. Note, similarity is defined as how much the statements logically supports, reinforces, and overlaps with in terms of geographical evidence. A score of 100 means that the second reasoning chain is a direct paraphrase of one of the points in the first reasoning chain.
+STRICT SCORING RULES:
+1. Only award points if the SAME EVIDENCE TYPE appears in both chains.
+- Evidence type means the category of observation (e.g., infrastructure, architecture, vegetation, agriculture, geology, topography, cultural clues, vehicles, signage, language, etc.).
+- If the second chain discusses a different evidence type than all points in the first chain, the score MUST be exactly 0.
+2. Do NOT give any credit for:
+- Both mentioning the same country or region.
+- Both being plausible, consistent, or geographically compatible.
+- Both being true statements about the same place.
+- The second chain making a correct or realistic claim for that country.
+3. Score 100 ONLY if the second chain is a direct paraphrase or clear restatement of one of the points in the first reasoning chain, using the SAME evidence type and SAME logical reasoning.
+4. Score 0 if:
+- The evidence type differs (for example, one chain is about roads/infrastructure and the other is about vegetation or topography).
+- The overlap is purely thematic (for example, both mention the Philippines but discuss different kinds of evidence).
+- There is no direct logical support or shared evidence category.
+5. Intermediate scores (1–99) should ONLY be given when:
+- Both chains clearly use the same evidence type (e.g., both describe vegetation or both describe architectural style),
+- AND the second chain partially supports or overlaps with a point in the first chain but is not a perfect paraphrase.
+6. Never assign a nonzero score purely because both reasoning chains refer to the same country, region, or overall conclusion.
+Please respond only with a JSON object. Make sure you do not include any commentary or explanation. Example format: {"precision": <score>}.
+FIRST REASONING CHAIN: {first_chain}
+SECOND REASONING CHAIN: {second_point}

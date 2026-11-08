@@ -28,6 +28,12 @@ this plan, and moves the 3DGPE spec to `specs/3dgpe.md`.
 - **Released scorer is broken.** `score.py` fails in four places: a missing `src.vllm` import, the
   factory receiving the wrong keyword arguments, an f-string format-spec crash in the judge prompt,
   and a `recall` key that never matches. We reimplement it from the paper's Algorithm 1 and Fig. 14.
+- **Paper prompts differ from the released code (found in T3).**
+  - Judge: Fig. 14's rubric is stricter than the repo's. It scores 0 unless both chains use the same
+    evidence type, and 100 only for a direct paraphrase. We use Fig. 14; the repo rubric (extracted
+    verbatim) is the G1 fallback.
+  - Generation: Fig. 21 adds "Output each point on a separate line ... without annotations and
+    titles". We use Fig. 21; the repo prompt is the G2 fallback.
 - **Paper settings (Appendix A.5.1).**
   - Gemma: temperature 1.0, max 512 new tokens.
   - Qwen2.5-VL: temperature 0.7, max new tokens raised to 32768.
@@ -117,7 +123,7 @@ T2, T3 and T4 can proceed in parallel. After checkpoint 2, Fix A (T8-T9) and Fix
 
 ### Phase 1: A trustworthy scorer (riskiest, so first)
 - [x] T2: Dataset fetch, challenge/round/expert parsing, point extraction (local, tested)
-- [ ] T3: One-to-all scorer and country check with a pluggable judge (local, fake judge)
+- [x] T3: One-to-all scorer and country check with a pluggable judge (local, fake judge)
 - [ ] T4: PACE environment, asset staging, preflight job
 - [ ] T5: Re-score released chains on PACE and match Table 2 (**gate G1**)
 
