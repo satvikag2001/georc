@@ -116,7 +116,7 @@ T2, T3 and T4 can proceed in parallel. After checkpoint 2, Fix A (T8-T9) and Fix
 - [x] T1: GeoRC `SPEC.md`; park the 3DGPE spec as `specs/3dgpe.md`
 
 ### Phase 1: A trustworthy scorer (riskiest, so first)
-- [ ] T2: Dataset fetch, challenge/round/expert parsing, point extraction (local, tested)
+- [x] T2: Dataset fetch, challenge/round/expert parsing, point extraction (local, tested)
 - [ ] T3: One-to-all scorer and country check with a pluggable judge (local, fake judge)
 - [ ] T4: PACE environment, asset staging, preflight job
 - [ ] T5: Re-score released chains on PACE and match Table 2 (**gate G1**)

@@ -36,11 +36,13 @@ Parse the data:
 Point extraction follows the paper: split lines, strip `1.`, `*` or `-` prefixes, keep lines longer
 than 5 characters.
 **Acceptance:**
-- [ ] Loader yields exactly 500 rounds and 800 (round, expert) pairs, plus 500 chains for each of
-  the 12 released chain sets.
-- [ ] Parsing matches the paper's rules on fixture files, including a line with "reasoning" in it
+- [x] Loader yields exactly 500 rounds and 800 (round, expert) pairs. Released chains: 500 each
+  verified locally for `gemma3_12b` and `qwen`; the other 10 sets are checked on PACE in T4.
+- [x] Parsing matches the paper's rules on fixture files, including a line with "reasoning" in it
   and a "Conclusion" block.
-- [ ] Ground-truth country for challenge `1NJsXTxIF9GGMDxC` is `[kg, my, rs, ar, za]`.
+- [x] Ground-truth country for challenge `1NJsXTxIF9GGMDxC` is `[kg, my, rs, ar, za]`.
+- [x] Found: round `8Uo6ejwXYqmp9av3_4` has a null country code; filled with `kr` from its
+  coordinates (documented override in `data.py`).
 **Verify:** `uv run pytest -q tests/test_data.py`.
 **Depends on:** none.
 **Files:** `pyproject.toml`, `src/georc/data.py`, `src/georc/points.py`, `scripts/fetch_dataset.py`,
