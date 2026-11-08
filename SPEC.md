@@ -129,7 +129,7 @@ def extract_points(chain: str) -> list[str]:
 
 **Always**
 - Run `ruff` and `pytest -q` before each commit. Commit after each task and push to `origin`
-  (`satvikag2001/georc`, private). Messages are under 50 words, with no AI attribution.
+  (`satvikag2001/georc`, private). Messages are under 30 words, with no AI attribution.
 - Use the paper's prompts verbatim (Fig. 21 for generation, Fig. 14 for the judge), its parsing
   rules and its decoding settings for every baseline and every validation run.
 - Fixed seeds. Every chain is written to disk as soon as it's done, and resubmitted jobs skip

@@ -1,7 +1,7 @@
 # Tasks: GeoRC Fix A and Fix B
 
 Plan: `tasks/plan.md`. Each task ends with `uv run ruff check . && uv run pytest -q` passing locally.
-Commit only if approved (plan Open Question 5): messages under 50 words, no AI attribution.
+Commit only if approved (plan Open Question 5): messages under 30 words, no AI attribution.
 
 PACE conventions for every task:
 - Account `gts-awu36`, QoS `embers`, job names `georc-*`, wallclock 8h.
