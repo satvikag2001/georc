@@ -12,7 +12,8 @@ export GEORC_OUT="$GEORC_ROOT/out"
 export GEORC_LOGS="$GEORC_ROOT/logs"
 export PY="$GEORC_VENV/bin/python"
 
-export PATH="$GEORC_ROOT/bin:$PATH"  # uv is installed here, not in ~/.local/bin
+# venv tools first (e.g. ninja), then uv, which is installed here and not in ~/.local/bin
+export PATH="$GEORC_VENV/bin:$GEORC_ROOT/bin:$PATH"
 export UV_CACHE_DIR="$GEORC_ROOT/cache/uv"
 export UV_PYTHON_INSTALL_DIR="$GEORC_ROOT/python"
 export UV_PYTHON_BIN_DIR="$GEORC_ROOT/bin"  # else uv links python3.12 into ~/.local/bin
@@ -26,11 +27,20 @@ export TORCHINDUCTOR_CACHE_DIR="$GEORC_ROOT/cache/inductor"
 export CUDA_CACHE_PATH="$GEORC_ROOT/cache/nv"
 export TMPDIR="$GEORC_ROOT/tmp"
 export VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1
+# Job 15325038: the FlashInfer top-k/top-p sampler JIT-compiles on first use and compute nodes
+# have no compiler toolchain; the PyTorch sampler needs none.
+export VLLM_USE_FLASHINFER_SAMPLER=0
+# Job 15325037: "CUDA device busy or unavailable" on an H100. One process per GPU is safe even
+# when the GPU only admits one process (exclusive compute mode).
+export VLLM_ENABLE_V1_MULTIPROCESSING=0
 
 # Free tier only. gts-awu36-paid and the inferno QoS cost money and are never used.
 export PACE_ACCOUNT="gts-awu36"
 export PACE_QOS="embers"
 export PACE_PARTITIONS="gpu-a100,gpu-h100,gpu-h200,gpu-l40s"  # bf16-capable, >=40 GB
+# Job 15325036 still landed on a V100 (no bf16) despite the partition list; node features
+# are a hard filter.
+export PACE_CONSTRAINT="A100|H100|H200|L40S"
 export JOB_PREFIX="georc-"
 
 if [ -f "$GEORC_ROOT/.hf_token" ]; then

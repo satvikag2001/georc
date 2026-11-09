@@ -17,9 +17,9 @@ done
 
 PRE=$(bash "$GEORC_CODE/pace/submit.sh" preflight.sbatch)
 echo "preflight job $PRE"
-export SBATCH_DEPENDENCY="afterok:$PRE"
-G1=$(bash "$GEORC_CODE/pace/submit.sh" score.sbatch \
+G1=$(bash "$GEORC_CODE/pace/submit.sh" --after "$PRE" score.sbatch \
   --released qwen gemma3_12b llama3_11b qwen3 hallucinated --seed 0)
 echo "G1 scoring job $G1 (seed 0)"
-NOISE=$(bash "$GEORC_CODE/pace/submit.sh" score.sbatch --released gemma3_12b --seed 1)
+NOISE=$(bash "$GEORC_CODE/pace/submit.sh" --after "$PRE" score.sbatch \
+  --released gemma3_12b --seed 1)
 echo "judge-noise job $NOISE (gemma3_12b, seed 1)"

@@ -6,5 +6,5 @@
 set -euo pipefail
 source "$HOME/scratch/georc/code/pace/common.sh"
 export HF_HUB_OFFLINE=1
-nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
+nvidia-smi --query-gpu=name,driver_version,compute_mode --format=csv,noheader
 "$PY" "$GEORC_CODE/scripts/score_chains.py" --data "$GEORC_DATA" --out "$GEORC_OUT" "$@"

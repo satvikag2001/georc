@@ -94,6 +94,11 @@ Before any download, record home usage, scratch contents and the director job co
   `~/.config/uv/uv-receipt.json` receipt. `common.sh` and `setup_env.sh` now prevent both.
 - Status 2026-11-08: env built (vLLM 0.32.0, torch 2.13 + CUDA 13.0), all assets downloaded.
   Preflight job 15325036 is queued on embers; the G1 jobs 15325037-38 wait on it (afterok).
+- 2026-11-09: all three jobs failed. Causes and fixes (guarded by `tests/test_pace_scripts.py`):
+  V100 placement despite the partition list (now a node-feature constraint); FlashInfer sampler
+  JIT needing a compiler (PyTorch sampler); "device busy" on an H100 (single-process vLLM);
+  `SBATCH_DEPENDENCY` does not exist (explicit `--after`); 35-min startup from uncompiled bytecode
+  (venv precompiled). Resubmitted: preflight 15386598, G1 15386599 and 15386601 (afterok).
 **Verify:** `ssh pace 'tail -50 ~/scratch/georc/logs/georc-preflight-*.out'`; `ssh pace 'pace-quota | grep Home'`.
 **Depends on:** none (needs your HF token and Gemma license, Open Question 4).
 **Files:** `pace/common.sh`, `pace/setup_env.sh`, `pace/fetch_assets.sh`, `pace/submit.sh` (+ `sync.sh`),

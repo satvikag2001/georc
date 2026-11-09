@@ -8,7 +8,7 @@
 set -euo pipefail
 source "$HOME/scratch/georc/code/pace/common.sh"
 export HF_HUB_OFFLINE=1
-nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+nvidia-smi --query-gpu=name,driver_version,memory.total,compute_mode --format=csv
 models=("$@")
 [ ${#models[@]} -eq 0 ] && models=(judge qwen-vl gemma)
 for model in "${models[@]}"; do
