@@ -10,6 +10,8 @@ mkdir -p "$LOCAL/runs/georc"
 rsync -az "$REMOTE_HOST:scratch/georc/out/scores" "$REMOTE_HOST:scratch/georc/logs" \
   "$LOCAL/runs/georc/"
 # No chains exist before the first generation job; out/ itself exists once scores do.
-rsync -az --ignore-missing-args "$REMOTE_HOST:scratch/georc/out/chains" \
-  "$REMOTE_HOST:scratch/georc/out/judge_cache" "$LOCAL/runs/georc/"
+# authors/ holds the authors' scorer results (pace/authors.sbatch); its views/ are only symlinks.
+rsync -az --ignore-missing-args --exclude views/ "$REMOTE_HOST:scratch/georc/out/chains" \
+  "$REMOTE_HOST:scratch/georc/out/judge_cache" "$REMOTE_HOST:scratch/georc/out/authors" \
+  "$LOCAL/runs/georc/"
 echo "pulled -> $LOCAL/runs/georc"

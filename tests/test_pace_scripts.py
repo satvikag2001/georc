@@ -1,5 +1,6 @@
 """Guards for the PACE job scripts, run against a fake `sbatch` (no cluster needed)."""
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -126,3 +127,74 @@ def test_no_script_relies_on_sbatch_dependency_env_var():
     # sbatch has no SBATCH_DEPENDENCY input variable; relying on it silently drops the dependency.
     for path in (REPO / "pace").iterdir():
         assert "SBATCH_DEPENDENCY" not in path.read_text(), path.name
+
+
+def authors_sbatch(tmp_path: Path, *args: str, patched: bool = True) -> subprocess.CompletedProcess:
+    """Run pace/authors.sbatch with a stub common.sh whose python echoes its arguments."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir(exist_ok=True)
+    (fake_bin / "python").write_text('#!/usr/bin/env bash\necho "offline=$HF_HUB_OFFLINE" "$@"\n')
+    (fake_bin / "nvidia-smi").write_text("#!/usr/bin/env bash\n")
+    for tool in fake_bin.iterdir():
+        tool.chmod(0o755)
+    root = tmp_path / "scratch" / "georc"
+    common = root / "code" / "pace" / "common.sh"
+    common.parent.mkdir(parents=True)
+    common.write_text(
+        f"PY={fake_bin / 'python'} GEORC_ROOT={root} GEORC_CODE=/c GEORC_DATA=/d GEORC_OUT=/o"
+        " HF_HOME=/h\n"
+    )
+    if patched:
+        stub = root / "authors" / "GeoRC" / "src" / "vllm" / "vllm_completion_util.py"
+        stub.parent.mkdir(parents=True)
+        stub.touch()
+    env = {"HOME": str(tmp_path), "PATH": f"{fake_bin}:/usr/bin:/bin"}
+    cmd = ["bash", "pace/authors.sbatch", *args]
+    return subprocess.run(cmd, env=env, capture_output=True, text=True, cwd=REPO)
+
+
+def test_authors_sbatch_runs_the_driver_offline_on_the_patched_clone(tmp_path):
+    out = authors_sbatch(tmp_path, "--tags", "qwen3", "--shard", "1/2")
+    assert out.returncode == 0, out.stderr
+    [call] = out.stdout.split("\n")[:-1]
+    root = tmp_path / "scratch" / "georc"
+    assert call.split() == [
+        "offline=1",
+        "/c/scripts/authors_score.py",
+        *("--authors", f"{root}/authors/GeoRC", "--data", "/d", "--out", "/o/authors"),
+        *("--cache-dir", "/h/hub", "--tags", "qwen3", "--shard", "1/2"),
+    ]
+
+
+def test_authors_sbatch_stops_before_python_without_the_patched_clone(tmp_path):
+    out = authors_sbatch(tmp_path, patched=False)
+    assert out.returncode == 1
+    assert "fetch_authors.sh" in out.stderr and "authors_score.py" not in out.stdout
+
+
+@pytest.mark.skipif(
+    not os.environ.get("GEORC_AUTHORS_REPO"), reason="set GEORC_AUTHORS_REPO to a local clone"
+)
+def test_fetch_authors_clones_the_pinned_commit_and_reapplies_the_patch_idempotently(tmp_path):
+    root = tmp_path / "georc"
+    (root / "venv" / "bin").mkdir(parents=True)
+    (root / "venv" / "bin" / "python").write_text(
+        "#!/usr/bin/env bash\ncat >/dev/null\necho checked\n"
+    )
+    (root / "venv" / "bin" / "python").chmod(0o755)
+    (root / "code").symlink_to(REPO)
+    script = f"GEORC_AUTHORS_URL={os.environ['GEORC_AUTHORS_REPO']} bash pace/fetch_authors.sh"
+    dest = root / "authors" / "GeoRC"
+    first = run_bash(script, tmp_path)
+    assert "checked" in first
+    score = dest / "score.py"
+    patched = score.read_text()
+    assert patched.count("REPRO PATCH") == 4
+    score.write_text(patched + "# local drift\n")
+    (dest / "stray.py").write_text("")
+    run_bash(script, tmp_path)  # second run: reset to the commit, patch applied exactly once
+    assert score.read_text() == patched and not (dest / "stray.py").exists()
+    head = subprocess.run(
+        ["git", "-C", str(dest), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+    )
+    assert head.stdout.strip() == "a7a167979b3b355c29d59d36e3bff66c79f6a530"

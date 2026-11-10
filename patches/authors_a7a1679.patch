@@ -1,0 +1,125 @@
+Crash and plumbing fixes that let the GeoRC authors' released scorer run offline.
+Upstream: https://github.com/talrejamohit03/GeoRC (Apache-2.0), commit
+a7a167979b3b355c29d59d36e3bff66c79f6a530. Applied by pace/fetch_authors.sh. Every change is
+marked "REPRO PATCH" in the code. None changes prompt text as sent (the one prompt edit escapes
+braces so the f-string renders as written instead of raising), point extraction, aggregation,
+model choice or sampling. The one judgement call, which JSON key holds a recall score, is
+switchable with GEORC_SCORE_KEY=fallback|precision|released.
+
+diff --git a/score.py b/score.py
+index 8ac8ab9..f057a1b 100644
+--- a/score.py
++++ b/score.py
+@@ -4,7 +4,10 @@ import json
+ import re
+ from typing import Dict, List
+ from abc import ABC, abstractmethod
+-from sentence_transformers import SentenceTransformer
++try:
++    from sentence_transformers import SentenceTransformer
++except ImportError:  # REPRO PATCH: not in env/requirements.txt; only key_points --emb uses it
++    SentenceTransformer = None
+ from src.hugging_face.hf_completion_utils import get_processor_and_model
+ from src.llm.parse_chains import parse_reasoning_chains
+ from src.llm.llm_scoring import match_atomic_keys_orig, match_atomic_keys_embeddings
+@@ -131,7 +134,7 @@ class BipartiteLLMScorer(BaseScorer):
+ 
+         6. You should not grade based on whether the second chain includes all the evidence or reasoning of the first chain.
+ 
+-        Please respond **only** with a JSON object. No explanation. Example format: {"precision": <score>}.
++        Please respond **only** with a JSON object. No explanation. Example format: {{"precision": <score>}}.
+         FIRST REASONING CHAIN:{first_chain}
+         SECOND REASONING CHAIN: {second_point}
+         """
+@@ -140,12 +143,23 @@ class BipartiteLLMScorer(BaseScorer):
+         from src.hugging_face.hf_completion_utils import text_to_text
+         response = text_to_text(prompt, self.model, self.tokenizer)
+         
++        # REPRO PATCH (judgement call, switchable): the prompt's only example key is "precision",
++        # so the released data.get(metric_type, 0) scores every recall call 0. GEORC_SCORE_KEY:
++        #   fallback (default): the metric's own key if the judge wrote it, else "precision"
++        #   precision: always the "precision" key;  released: unchanged (recall is always 0)
++        key_mode = os.environ.get("GEORC_SCORE_KEY", "fallback")
++        if key_mode not in ("fallback", "precision", "released"):
++            raise SystemExit(f"GEORC_SCORE_KEY must be fallback, precision or released: {key_mode}")
+         match = re.search(r'\{.*?\}', response, re.DOTALL)
+         if match:
+             try:
+                 data = json.loads(match.group(0))
+-                return float(data.get(metric_type, 0))
+-            except (ValueError, KeyError):
++                if key_mode == "released":
++                    return float(data.get(metric_type, 0))
++                if key_mode == "precision":
++                    return float(data.get("precision", 0))
++                return float(data.get(metric_type, data.get("precision", 0)))
++            except (ValueError, KeyError, TypeError):  # REPRO PATCH: TypeError, e.g. a null score
+                 return 0.0
+         return 0.0
+ 
+@@ -279,10 +293,11 @@ def main():
+ 
+     # 2. Strategy Selection via Factory
+     try:
+-        scorer = ScorerFactory.get_scorer(
++        scorer = ScorerFactory.get_scorer(  # REPRO PATCH: the factory reads llm_*/vlm_model keys
+             args.mode, 
+-            model=llm, 
+-            tokenizer=tokenizer, 
++            llm_model=llm,
++            llm_tokenizer=tokenizer,
++            vlm_model=vlm,
+             st_model=st_model
+         )
+     except ValueError as e:
+diff --git a/src/hugging_face/hf_completion_utils.py b/src/hugging_face/hf_completion_utils.py
+index aa9e367..40e401d 100644
+--- a/src/hugging_face/hf_completion_utils.py
++++ b/src/hugging_face/hf_completion_utils.py
+@@ -125,8 +125,11 @@ def get_processor_and_model(model_name: str, cache_dir: str = None, device_id: i
+         return model, tokenizer
+     elif model_name == "qwen_llm":
+         model_id = "Qwen/Qwen3-4B-Instruct-2507"
+-        tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir, device_map="cuda")
+-        model = AutoModelForCausalLM.from_pretrained(model_id, cache_dir=cache_dir).eval()
++        # REPRO PATCH: an offline cache filled with a pinned commit has no refs/main, so load
++        # that commit when GEORC_JUDGE_REVISION is set (unset: "main", the released behaviour).
++        revision = os.environ.get("GEORC_JUDGE_REVISION", "main")
++        tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir, device_map="cuda", revision=revision)
++        model = AutoModelForCausalLM.from_pretrained(model_id, cache_dir=cache_dir, revision=revision).eval()
+         model = model.to(device)
+         print("After allocation:")
+         print_utilizations()
+diff --git a/src/llm/llm_scoring.py b/src/llm/llm_scoring.py
+index 9a42332..3f7d991 100644
+--- a/src/llm/llm_scoring.py
++++ b/src/llm/llm_scoring.py
+@@ -2,7 +2,10 @@ import src.hugging_face.hf_completion_utils as completion_utils
+ import src.vllm.vllm_completion_util as vllm_completion_utils
+ import re
+ import json
+-from sentence_transformers import util
++try:
++    from sentence_transformers import util
++except ImportError:  # REPRO PATCH: not in env/requirements.txt; only embedding scorers use it
++    util = None
+ 
+ """
+ You are an expert at summarizing a statement.
+diff --git a/src/vllm/vllm_completion_util.py b/src/vllm/vllm_completion_util.py
+new file mode 100644
+index 0000000..d15d26d
+--- /dev/null
++++ b/src/vllm/vllm_completion_util.py
+@@ -0,0 +1,11 @@
++# REPRO PATCH: score.py, src/llm/llm_scoring.py and src/vlm/correctness_score.py import this
++# module, but it is not in the released repository (commit a7a1679), so every import failed.
++# This stub only makes the imports succeed. The vLLM paths (vlm_judge mode, use_vllm=True)
++# still cannot run and fail loudly here; the bipartite scorer never calls them.
++
++
++def _not_released(*args, **kwargs):
++    raise NotImplementedError("src/vllm/vllm_completion_util.py was not released at a7a1679")
++
++
++get_model = image_and_text_to_text = text_to_text_qwen_30b = _not_released

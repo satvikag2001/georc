@@ -1,13 +1,15 @@
 """Turn score summaries pulled from PACE into result tables and gate verdicts.
 
 bash pace/pull.sh && report.py --validation runs/georc/scores   # gate G1 on released chains
+report.py --authors runs/georc/authors/float32_s0                 # the authors' own scorer
 """
 
 import argparse
 from pathlib import Path
 
+from georc import authors
 from georc.evaluate import load_summaries, write_rows
-from georc.gates import OPEN_MODELS, check_country, check_f1, validation_rows
+from georc.gates import OPEN_MODELS, TABLE2, check_country, check_f1, validation_rows
 
 
 def report_validation(scores: Path, tag: str, noise_tag: str, out: Path) -> bool:
@@ -51,6 +53,51 @@ def report_validation(scores: Path, tag: str, noise_tag: str, out: Path) -> bool
     return any(verdicts.values())
 
 
+def report_authors(run_dir: Path) -> None:
+    """The authors' own scorer on the released chains (pace/authors.sbatch) next to Table 2 of
+    arXiv v2 and v1 (v1 = their repo's leaderboard). Works on partial runs: n counts pairs so far.
+
+    Second table: their F1 recomputed from the saved replies under each way of reading a reply
+    (fallback/precision/released: GEORC_SCORE_KEY; first_number: our scorer), and their F1 against
+    Human_Expert_3 only, the other reading of the Human_Chain_3.txt their code expects.
+    """
+    heads = ("their code P/R/F1", "Table 2 v2", "Table 2 v1")
+    print(f"{'model':14s} {'n':>4s} " + " ".join(f"{h:>20s}" for h in heads))
+    found = {}
+    for tag in authors.TAGS:
+        rows = authors.load_pairs(run_dir, authors.completed_units(run_dir, tag))
+        if not rows:
+            continue
+        found[tag] = rows
+        ours, paper, board = authors.summarize(rows), TABLE2[tag], authors.TABLE2_V1[tag]
+        triple = "/".join(f"{x:.2f}" for x in (ours["precision"], ours["recall"], ours["f1"]))
+        print(
+            f"{tag:14s} {ours['n']:4d} {triple:>20s}"
+            f" {f'{paper.precision:.2f}/{paper.recall:.2f}/{paper.f1:.2f}':>20s}"
+            f" {'/'.join(f'{x:.2f}' for x in board):>20s}"
+        )
+    print(
+        f"\n{'model':14s} {'F1 CI95 ours':>13s} {'paper':>13s}  "
+        + " ".join(f"{r:>12s}" for r in authors.READINGS)
+        + f" {'Expert_3 only':>15s}"
+    )
+    for tag, rows in found.items():
+        low, high = authors.summarize(rows)["f1_ci95"]
+        ci = TABLE2[tag].f1_ci
+        paper_ci = "-" if ci is None else f"{ci[0]:.2f}-{ci[1]:.2f}"
+        by_reading = [
+            authors.summarize([authors.pair_metrics(r["calls"], k) for r in rows])["f1"]
+            for k in authors.READINGS
+        ]
+        third = [r for r in rows if r["expert"] == "Human_Expert_3"]
+        expert3 = f"{authors.summarize(third)['f1']:.2f} (n={len(third)})" if third else "-"
+        print(
+            f"{tag:14s} {f'{low:.2f}-{high:.2f}':>13s} {paper_ci:>13s}  "
+            + " ".join(f"{f1:12.2f}" for f1 in by_reading)
+            + f" {expert3:>15s}"
+        )
+
+
 def show(checks) -> None:
     for check in checks:
         print(f"[{'PASS' if check.passed else 'FAIL'}] {check.name}: {check.detail}")
@@ -58,12 +105,22 @@ def show(checks) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--validation", type=Path, required=True, help="scores dir from PACE")
+    parser.add_argument("--validation", type=Path, help="scores dir from PACE")
+    parser.add_argument(
+        "--authors",
+        type=Path,
+        help="run dir of the authors' scorer, e.g. runs/georc/authors/float32_s0",
+    )
     parser.add_argument("--tag", default="paper_s0")
     parser.add_argument("--noise-tag", default="paper_s1")
     parser.add_argument("--out", type=Path, default=Path("results/validation.csv"))
     args = parser.parse_args()
-    report_validation(args.validation, args.tag, args.noise_tag, args.out)
+    if not (args.validation or args.authors):
+        parser.error("give --validation and/or --authors")
+    if args.validation:
+        report_validation(args.validation, args.tag, args.noise_tag, args.out)
+    if args.authors:
+        report_authors(args.authors)
 
 
 if __name__ == "__main__":
