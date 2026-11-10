@@ -159,10 +159,10 @@ The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
 `pace/generate.sbatch`, `tests/test_prompts.py`. **Size:** M
 
 ### T7: Full baselines G0 and Q0 (gate G2)
-**Description:** 500 images x seeds 0-2 for each model, scored. Results go to `results/baseline.csv`.
+**Description:** 500 images x seed 0 for each model, scored. Results go to `results/baseline.csv`.
 **Acceptance (G2):**
 - [ ] Mean F1 is within +/- 2.0 of Table 2 (Gemma 25.23, Qwen 29.09), and country accuracy within +/- 4 points (64.0, 69.4).
-- [ ] Seed-to-seed spread and truncation rate are reported for each model.
+- [ ] Truncation rate is reported for each model.
 **Verify:** `uv run python scripts/report.py --conditions G0 Q0`.
 **Depends on:** T6. **Files:** `src/georc/conditions.py`, `results/baseline.csv`. **Size:** S
 
@@ -190,9 +190,9 @@ The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
 `tests/test_tiles.py`. **Size:** M
 
 ### T9: Full Fix A runs
-**Description:** A1 and A2 x 500 images x seeds 0-2, scored.
+**Description:** A1 and A2 x 500 images x seed 0, scored.
 **Acceptance:**
-- [ ] 3,000 chains, all scored, with cost logs.
+- [ ] 1,000 chains, all scored, with cost logs.
 **Verify:** `uv run python scripts/report.py --conditions G0 A1 A2`.
 **Depends on:** T8. **Files:** none new (runs only). **Size:** S
 
@@ -217,9 +217,9 @@ The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
 **Files:** `src/georc/prompts.py`, `src/georc/conditions.py`, `tests/test_prompts.py`, `results/prompt_hashes.json`. **Size:** S
 
 ### T11: Full Fix B runs
-**Description:** B0 and B1 x Gemma and Qwen x 500 images x seeds 0-2, scored.
+**Description:** B0 and B1 x Gemma and Qwen x 500 images x seed 0, scored.
 **Acceptance:**
-- [ ] 6,000 chains, all scored. The prompt-hash check passed at the start of every job.
+- [ ] 2,000 chains, all scored. The prompt-hash check passed at the start of every job.
 **Verify:** `uv run python scripts/report.py --conditions G0 G-B0 G-B1 Q0 Q-B0 Q-B1`.
 **Depends on:** T10. **Files:** none new (runs only). **Size:** S
 
@@ -229,7 +229,7 @@ The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
 
 ### T12: Statistics and report
 **Description:** `src/georc/stats.py`:
-- **F1:** per-pair F1 averaged over seeds; the paired difference vs the model's baseline; a cluster
+- **F1:** per-pair F1 (seed 0); the paired difference vs the model's baseline; a cluster
   bootstrap over images (10,000 resamples) for the 95% CI.
 - **Country accuracy:** a paired bootstrap of the per-image change.
 - **Diagnostics:** truncation rate, and the input and output tokens and GPU-seconds per condition.
@@ -270,7 +270,7 @@ and verify the counts. Then `pace/cleanup.sh`:
    - home usage back to its starting level or below;
    - director directories and jobs listed identically before and after.
 **Acceptance:**
-- [ ] The laptop copy has 12,000 chains and all score files (count check).
+- [ ] The laptop copy has 4,000 chains and all score files (count check).
 - [ ] All three cleanup verifications pass, and the output is saved to `results/pace_cleanup.txt`.
 **Verify:** `ssh pace 'squeue -u sagrawal394 -h -o %j | grep -c ^georc- ; ls -d ~/scratch/georc'` gives `0` and "No such file".
 **Depends on:** checkpoint 3. **Files:** `pace/pull.sh`, `pace/cleanup.sh`, `results/pace_cleanup.txt`. **Size:** S

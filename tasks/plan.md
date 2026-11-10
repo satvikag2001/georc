@@ -7,7 +7,7 @@ Status: approved 2026-11-08.
 The goal is to show a measurable improvement on GeoRC (Talreja et al., ACL 2026, Hays lab) for two
 open models:
 
-- **Fix A:** give Gemma-3-12B more image resolution. The current pipeline squashes 2880x1576 images
+- **Fix A:** give Gemma-3-12B more image resolution. The current pipeline squashes the images (about 2800-3000 x 1500-1600 pixels)
   to 896x896. We test Gemma's built-in pan-and-scan, and a dense tile grid.
 - **Fix B:** use an expert-style prompt on Gemma-3-12B and Qwen2.5-VL-7B. It has a format-only
   control, so formatting gains are not mistaken for better reasoning.
@@ -61,7 +61,9 @@ this plan, and moves the 3DGPE spec to `specs/3dgpe.md`.
   generation, Fig. 14 for the judge), its line-splitting rules and its decoding settings.
   - The only documented deviation: the judge's score is parsed from the first number in its JSON
     reply, because the released code's key lookup sets recall to 0.
-- **Paired design.** Every condition uses the same 500 images and seeds 0, 1 and 2. Differences are
+- **Paired design.** Every condition uses the same 500 images and one seed (0; decided 2026-11-10 to
+  save time and compute). Each chain is one independent draw, so the bootstrap still covers
+  generation randomness, with wider intervals than 3 seeds would give. Differences are
   computed per (round, expert) pair, then bootstrapped by image, so the 3 experts on a shared image
   are not counted as independent.
 - **Equal output budgets within a model.** Every Gemma condition keeps 512 max new tokens. The rate
@@ -74,18 +76,18 @@ this plan, and moves the 3DGPE spec to `specs/3dgpe.md`.
   - Cleanup removes exactly that directory and those jobs.
   - It also removes uv, which is not installed on PACE today and is only installed for this work.
 
-## Conditions (12,000 chains in total)
+## Conditions (4,000 chains in total)
 
 | Id | Model | Change vs paper baseline | Image tokens | Seeds |
 |---|---|---|---|---|
-| G0 | Gemma-3-12B | none (896 px squash) | ~256 | 3 |
-| A1 | Gemma-3-12B | pan-and-scan (`do_pan_and_scan`) | ~768 | 3 |
-| A2 | Gemma-3-12B | full view + 2x4 tiles, plus one neutral sentence saying so | ~2,304 | 3 |
-| G-B0 | Gemma-3-12B | format-only prompt (control) | ~256 | 3 |
-| G-B1 | Gemma-3-12B | expert prompt | ~256 | 3 |
-| Q0 | Qwen2.5-VL-7B | none | ~5,800 (native) | 3 |
-| Q-B0 | Qwen2.5-VL-7B | format-only prompt (control) | ~5,800 | 3 |
-| Q-B1 | Qwen2.5-VL-7B | expert prompt | ~5,800 | 3 |
+| G0 | Gemma-3-12B | none (896 px squash) | ~256 | 1 |
+| A1 | Gemma-3-12B | pan-and-scan (`do_pan_and_scan`) | ~768 | 1 |
+| A2 | Gemma-3-12B | full view + 2x4 tiles, plus one neutral sentence saying so | ~2,304 | 1 |
+| G-B0 | Gemma-3-12B | format-only prompt (control) | ~256 | 1 |
+| G-B1 | Gemma-3-12B | expert prompt | ~256 | 1 |
+| Q0 | Qwen2.5-VL-7B | none | ~5,800 (native) | 1 |
+| Q-B0 | Qwen2.5-VL-7B | format-only prompt (control) | ~5,800 | 1 |
+| Q-B1 | Qwen2.5-VL-7B | expert prompt | ~5,800 | 1 |
 
 - The **format-only prompt (B0)** is the paper prompt plus: one clue per line, no introduction or
   summary, and a final line "Conclusion: <country>, <city>".
@@ -169,15 +171,15 @@ T2, T3 and T4 can proceed in parallel. After checkpoint 2, Fix A (T8-T9) and Fix
   - Cost (input and output tokens, GPU time) is reported next to every number.
 - **Done:**
   - `results/REPORT.md` and `results/summary.csv` are committed.
-  - All 12,000 chains and their scores are copied to the laptop.
+  - All 4,000 chains and their scores are copied to the laptop.
   - PACE holds nothing from this project.
 
 ## Compute budget (estimate)
 
 | Item | Amount | A100-hours |
 |---|---|---|
-| Generation | 12,000 chains, ~7M output tokens | 1-2 |
-| Scoring | ~35 passes x ~15k judge calls (24 conditions x seeds, 5 validation, 6 judge-noise repeats) | 3-5 |
+| Generation | 4,000 chains, ~2.5M output tokens | ~0.5-1 |
+| Scoring | ~10 passes x ~15k judge calls (8 conditions, plus validation reruns) | 1-2 |
 | Pilots and preflight | | ~1 |
 | **Total** | | **~6-8 A100-hours over ~12 jobs** |
 

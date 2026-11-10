@@ -17,7 +17,7 @@ Santanam, Mendes, Ritter, Xu, Hays; ACL 2026; arXiv 2601.21278). Data: HF `mohit
 **What we test.** Two fixes, each aimed at a failure type the paper names:
 - **Fix A, resolution (Gemma-3-12B).** The paper hypothesizes that open VLMs fail at "extracting
   fine-grained visual attributes from high resolution images" (abstract, Figs. 8 and 25). Gemma
-  squashes each 2880x1576 image to 896x896. We test the built-in pan-and-scan (A1) and a full view
+  squashes each image (about 2800-3000 x 1500-1600 pixels; sizes vary) to 896x896. We test the built-in pan-and-scan (A1) and a full view
   plus a 2x4 tile grid (A2).
 - **Fix B, expert-style prompt (Gemma-3-12B and Qwen2.5-VL-7B).** The paper notes that every model
   got one fixed prompt and "could perform more competitively ... with specific prompt tuning"
@@ -53,7 +53,7 @@ ssh pace 'bash ~/scratch/georc/code/pace/setup_env.sh'      # login node: uv, Py
 ssh pace 'bash ~/scratch/georc/code/pace/fetch_assets.sh'   # login node: dataset + 3 models (needs HF token)
 bash pace/submit.sh preflight.sbatch
 bash pace/submit.sh score.sbatch    --released qwen gemma3_12b llama3_11b qwen3 hallucinated
-bash pace/submit.sh generate.sbatch --condition G0 --seeds 0 1 2
+bash pace/submit.sh generate.sbatch --condition G0 --seeds 0
 bash pace/pull.sh                                           # copy outputs to runs/georc/
 uv run python scripts/report.py --conditions G0 A1 A2 G-B0 G-B1 Q0 Q-B0 Q-B1
 bash pace/cleanup.sh --dry-run && bash pace/cleanup.sh      # only after checkpoint 3
@@ -112,7 +112,8 @@ def extract_points(chain: str) -> list[str]:
 - **G1, scorer:** on the released chains, each open model's F1 is within its paper 95% CI +/- 1.0.
   The ranking Qwen2.5-VL > Gemma > Llama > Qwen3-VL holds. Country accuracy is within +/- 3 points
   of Table 2. The hallucinated baseline's F1 is within +/- 2 of 18.13.
-- **G2, baselines:** mean F1 over seeds 0-2 is within +/- 2.0 of Table 2 (Gemma 25.23, Qwen 29.09).
+- **G2, baselines:** F1 (seed 0, one chain per image, as in the paper) is within +/- 2.0 of Table 2
+  (Gemma 25.23, Qwen 29.09).
   Country accuracy is within +/- 4 points (64.0, 69.4).
 - **Win, per condition vs its model's baseline:**
   - the F1 gain's 95% CI (cluster bootstrap over images) excludes 0, **and**
