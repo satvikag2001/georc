@@ -34,7 +34,7 @@ def test_submit_uses_free_tier_and_bf16_gpus_only(tmp_path):
     assert "--account=gts-awu36" in args
     assert "--qos=embers" in args
     # A partition list alone let an embers job land on a V100 (no bf16); node features cannot.
-    assert "--constraint=A100|H100|H200|L40S" in args
+    assert "--constraint=A100|H100|H200|L40S|RTX-Pro-Blackwell" in args
     assert "--job-name=georc-preflight" in args
 
 

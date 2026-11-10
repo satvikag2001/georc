@@ -44,10 +44,10 @@ export VLLM_ENABLE_V1_MULTIPROCESSING=0
 # Free tier only. gts-awu36-paid and the inferno QoS cost money and are never used.
 export PACE_ACCOUNT="gts-awu36"
 export PACE_QOS="embers"
-export PACE_PARTITIONS="gpu-a100,gpu-h100,gpu-h200,gpu-l40s"  # bf16-capable, >=40 GB
+export PACE_PARTITIONS="gpu-a100,gpu-h100,gpu-h200,gpu-l40s,gpu-rtxpro-blackwell"  # bf16-capable, >=40 GB
 # Job 15325036 still landed on a V100 (no bf16) despite the partition list; node features
 # are a hard filter.
-export PACE_CONSTRAINT="A100|H100|H200|L40S"
+export PACE_CONSTRAINT="A100|H100|H200|L40S|RTX-Pro-Blackwell"
 export JOB_PREFIX="georc-"
 
 if [ -f "$GEORC_ROOT/.hf_token" ]; then

@@ -5,7 +5,7 @@ Commits approved: commit after each task and push to `origin`; messages under 30
 Scope (2026-11-10): Gemma-3-12B only, seed 0. Qwen conditions (Q0, Q-B0, Q-B1) are deferred.
 
 PACE conventions for every task:
-- Account `gts-awu36`, QoS `embers`, job names `georc-*`, wallclock 8h.
+- Account `gts-awu36`, QoS `embers`, job names `georc-*`, wallclock 1-2h (short jobs backfill sooner).
 - Everything under `~/scratch/georc/`, with `HF_HUB_OFFLINE=1` in jobs.
 
 ---
