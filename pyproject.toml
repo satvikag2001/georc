@@ -3,7 +3,7 @@ name = "georc"
 version = "0.1.0"
 description = "Resolution and prompting fixes for open VLMs on the GeoRC geolocation-reasoning benchmark."
 requires-python = ">=3.12"
-dependencies = ["huggingface_hub>=0.25"]
+dependencies = ["huggingface_hub>=0.25", "pillow>=10"]
 
 [dependency-groups]
 dev = ["pytest>=8.3", "ruff>=0.7"]

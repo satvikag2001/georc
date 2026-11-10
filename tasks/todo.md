@@ -150,6 +150,9 @@ The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
 - [ ] 100 chains per model. A resubmitted job regenerates nothing that already exists.
 - [ ] Pilot F1 is within +/- 4 of Table 2 for both models; the looser bound reflects n=100.
 - [ ] 10 pilot chains are read side by side with released chains for the same images, and look like the same kind of output.
+- 2026-11-10: code done and unit-tested (`conditions.py`, `generate.py`, `generate_chains.py` with
+  `--pilot`/`--dry-run`, `pace/generate.sbatch`, `score_chains.py --pilot`). Atomic chain writes make
+  preempted jobs safe to resubmit. The pilot job waits for checkpoint 1 (G1 review).
 **Verify:** `uv run pytest -q tests/test_prompts.py`; `ssh pace 'ls ~/scratch/georc/out/G0/seed0 | wc -l'` gives 100.
 **Depends on:** T5.
 **Files:** `src/georc/generate.py`, `src/georc/prompts.py`, `scripts/generate_chains.py`,

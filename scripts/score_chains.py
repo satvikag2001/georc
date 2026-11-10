@@ -14,6 +14,7 @@ from pathlib import Path
 
 from georc.data import load_pairs, load_rounds
 from georc.evaluate import directory_chain_set, evaluate, released_chain_set, write_rows
+from georc.generate import pilot_rounds, restrict_pairs
 from georc.judge import CachedJudge
 
 
@@ -26,15 +27,22 @@ def main() -> None:
     parser.add_argument("--variant", choices=["paper", "repo"], default="paper")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--greedy", action="store_true")
+    parser.add_argument("--pilot", action="store_true", help="first 20 challenges only")
     args = parser.parse_args()
 
     from georc.vllm_backend import VLLMJudge  # import late: vllm exists only on PACE
 
     rounds = load_rounds(args.data)
     pairs = load_pairs(args.data, rounds)
-    tag = f"{args.variant}_s{args.seed}{'_greedy' if args.greedy else ''}"
+    if args.pilot:
+        rounds = pilot_rounds(rounds)
+        pairs = restrict_pairs(pairs, rounds)
+    # The cache depends only on judge settings, so pilot and full runs share replies.
+    judge_tag = f"{args.variant}_s{args.seed}{'_greedy' if args.greedy else ''}"
+    tag = judge_tag + ("_pilot" if args.pilot else "")
     judge = CachedJudge(
-        VLLMJudge(seed=args.seed, greedy=args.greedy), args.out / "judge_cache" / f"{tag}.jsonl"
+        VLLMJudge(seed=args.seed, greedy=args.greedy),
+        args.out / "judge_cache" / f"{judge_tag}.jsonl",
     )
     chain_sets = [(name, released_chain_set(args.data, rounds, name)) for name in args.released]
     for spec in args.dirs:
