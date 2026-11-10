@@ -26,6 +26,13 @@ export TRITON_CACHE_DIR="$GEORC_ROOT/cache/triton"
 export TORCHINDUCTOR_CACHE_DIR="$GEORC_ROOT/cache/inductor"
 export CUDA_CACHE_PATH="$GEORC_ROOT/cache/nv"
 export TMPDIR="$GEORC_ROOT/tmp"
+export FLASHINFER_WORKSPACE_BASE="$GEORC_ROOT/cache"  # else ~/.cache/flashinfer
+export TILELANG_CACHE_DIR="$GEORC_ROOT/cache/tilelang" TILELANG_TMP_DIR="$GEORC_ROOT/cache/tilelang/tmp"
+# Inside a job, point HOME at scratch too, so any library that defaults to ~ stays in our footprint.
+if [ -n "${SLURM_JOB_ID:-}" ]; then
+  export HOME="$GEORC_ROOT/home"
+  mkdir -p "$HOME"
+fi
 export VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1
 # Job 15325038: the FlashInfer top-k/top-p sampler JIT-compiles on first use and compute nodes
 # have no compiler toolchain; the PyTorch sampler needs none.

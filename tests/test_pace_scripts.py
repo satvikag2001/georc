@@ -60,6 +60,21 @@ def test_common_sh_disables_jit_and_multiprocess_vllm_and_finds_venv_tools(tmp_p
     assert first_path == str(tmp_path / "georc" / "venv" / "bin")
 
 
+def test_inside_a_job_every_cache_and_home_is_under_the_project_root(tmp_path):
+    # Jobs 15386598-601 left ~/.cache/flashinfer and ~/.tilelang behind (libraries default to ~).
+    out = run_bash(
+        "SLURM_JOB_ID=1; source pace/common.sh;"
+        " echo $HOME $FLASHINFER_WORKSPACE_BASE $TILELANG_CACHE_DIR $TILELANG_TMP_DIR",
+        tmp_path,
+    )
+    root = str(tmp_path / "georc")
+    assert all(path.startswith(root + "/") for path in out.split()), out
+
+
+def test_outside_a_job_home_is_left_alone(tmp_path):
+    assert run_bash("source pace/common.sh; echo $HOME", tmp_path).strip() == str(tmp_path)
+
+
 def test_no_script_relies_on_sbatch_dependency_env_var():
     # sbatch has no SBATCH_DEPENDENCY input variable; relying on it silently drops the dependency.
     for path in (REPO / "pace").iterdir():

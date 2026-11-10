@@ -85,9 +85,10 @@ than 5 characters.
 Before any download, record home usage, scratch contents and the director job count to
 `results/pace_baseline.txt`, for the cleanup check.
 **Acceptance:**
-- [ ] The preflight job exits 0 on `embers`, and its log shows driver/CUDA, all 3 models loaded offline, and that pan-and-scan works (or the fallback is chosen).
+- [x] The preflight job exits 0 on `embers`, and its log shows driver/CUDA, all 3 models loaded offline, and that pan-and-scan works (or the fallback is chosen). Job 15386598 on an H200: judge 100/0 on match/mismatch, Qwen prompt 5,907 tokens, Gemma pan-and-scan +539 prompt tokens.
 - [x] Home usage has not grown by more than 0.5 GB (14.4 GB before and after, 2026-11-08).
-- [ ] Nothing exists outside `~/scratch/georc` and the uv paths.
+- [x] Nothing exists outside `~/scratch/georc`: FlashInfer and TileLang caches found in home and removed
+  2026-11-10; inside jobs, `HOME` and both caches now point at scratch (guard test added).
 - [x] All 12 released chain sets have 500 chains each on PACE, plus all 500 images (carried over
   from T2).
 - [x] Home footprint found and removed: uv's `~/.local/bin/python3.12` link and its
@@ -116,6 +117,10 @@ noise. Write `results/validation.csv`, comparing ours with Table 2.
 **Verify:** `bash pace/pull.sh && uv run python scripts/report.py --validation runs/georc/scores`,
 which writes `results/validation.csv` and prints each G1 check as PASS or FAIL. (Gate checker and
 report implemented and unit-tested; awaiting the PACE jobs.)
+- 2026-11-10, Fig. 14 rubric (`results/validation_paper_s0.csv`): **G1 FAILS.** F1 is 5-10 points
+  under Table 2 for every model, mostly from precision. Judge seed noise is 0.02 F1. Country accuracy
+  is 6-8 points low; hedged guesses ("Kazakhstan or Kyrgyzstan") look like the cause. Fallback jobs
+  submitted: greedy 15427946, released-code rubric 15427947.
 **Depends on:** T2, T3, T4.
 **Files:** `scripts/score_chains.py`, `src/georc/vllm_backend.py`, `pace/score.sbatch`, `results/validation.csv`.
 **Size:** M

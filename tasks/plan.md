@@ -124,7 +124,7 @@ T2, T3 and T4 can proceed in parallel. After checkpoint 2, Fix A (T8-T9) and Fix
 ### Phase 1: A trustworthy scorer (riskiest, so first)
 - [x] T2: Dataset fetch, challenge/round/expert parsing, point extraction (local, tested)
 - [x] T3: One-to-all scorer and country check with a pluggable judge (local, fake judge)
-- [ ] T4: PACE environment, asset staging, preflight job
+- [x] T4: PACE environment, asset staging, preflight job
 - [ ] T5: Re-score released chains on PACE and match Table 2 (**gate G1**)
 
 ### Checkpoint 1: Scorer validated
