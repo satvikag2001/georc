@@ -1,7 +1,8 @@
 # Tasks: GeoRC Fix A and Fix B
 
 Plan: `tasks/plan.md`. Each task ends with `uv run ruff check . && uv run pytest -q` passing locally.
-Commit only if approved (plan Open Question 5): messages under 30 words, no AI attribution.
+Commits approved: commit after each task and push to `origin`; messages under 30 words, no AI attribution.
+Scope (2026-11-10): Gemma-3-12B only, seed 0. Qwen conditions (Q0, Q-B0, Q-B1) are deferred.
 
 PACE conventions for every task:
 - Account `gts-awu36`, QoS `embers`, job names `georc-*`, wallclock 8h.
@@ -101,15 +102,16 @@ Before any download, record home usage, scratch contents and the director job co
   `SBATCH_DEPENDENCY` does not exist (explicit `--after`); 35-min startup from uncompiled bytecode
   (venv precompiled). Resubmitted: preflight 15386598, G1 15386599 and 15386601 (afterok).
 **Verify:** `ssh pace 'tail -50 ~/scratch/georc/logs/georc-preflight-*.out'`; `ssh pace 'pace-quota | grep Home'`.
-**Depends on:** none (needs your HF token and Gemma license, Open Question 4).
+**Depends on:** none (HF token and Gemma license, both provided).
 **Files:** `pace/common.sh`, `pace/setup_env.sh`, `pace/fetch_assets.sh`, `pace/submit.sh` (+ `sync.sh`),
 `pace/preflight.sbatch`. **Size:** M
 
 ### T5: Validate the scorer on released chains (gate G1)
 **Description:** `scripts/score_chains.py` plus a vLLM judge backend, run by `pace/score.sbatch`.
 Score the released chains of Qwen2.5-VL, Gemma-3, Llama-3.2 and Qwen3-VL, plus the hallucinated
-baseline, with the judge's default sampling and seed 0. Repeat Gemma with seed 1 to measure judge
-noise. Write `results/validation.csv`, comparing ours with Table 2.
+baseline, with the judge's default sampling and seed 0. Gemma was repeated with judge seed 1 to
+measure judge noise (done: 0.02 F1). Write a validation CSV comparing ours with Table 2, with both
+country measures (strict `country_acc` and `country_acc_match`).
 **Acceptance (G1):**
 - [ ] Each open model's F1 is within its paper 95% CI +/- 1.0, and the ranking holds.
 - [ ] Country accuracy is within +/- 3 points of Table 2. The hallucinated baseline's F1 is within +/- 2 of 18.13.
@@ -125,12 +127,13 @@ report implemented and unit-tested; awaiting the PACE jobs.)
   code and says whether the final guess, alternatives included, names it. Both measures are reported;
   whichever reproduces Table 2 is locked in before any generation. Rerun with cached F1: job 15428120.
 **Depends on:** T2, T3, T4.
-**Files:** `scripts/score_chains.py`, `src/georc/vllm_backend.py`, `pace/score.sbatch`, `results/validation.csv`.
+**Files:** `scripts/score_chains.py`, `src/georc/vllm_backend.py`, `pace/score.sbatch`,
+`results/validation_paper_s0.csv` (one CSV per judge setting).
 **Size:** M
 
 ### Checkpoint 1: Scorer validated
 - [ ] G1 met, or an agreed fallback recorded in `SPEC.md`.
-- [ ] Human reviews `results/validation.csv` before any generation job.
+- [ ] Human reviews `results/validation_*.csv` before any generation job.
 
 ---
 
@@ -138,32 +141,42 @@ report implemented and unit-tested; awaiting the PACE jobs.)
 
 ### T6: Generation pipeline, 100-image pilot
 **Description:** `src/georc/generate.py` (vLLM):
-- **Model registry:** Gemma at temperature 1.0 with max 512 new tokens; Qwen at temperature 0.7 with max 32768.
-- **Prompt:** Fig. 21 verbatim. It has one more sentence than the released code's prompt ("Output each
-  point on a separate line ... without annotations and titles"). If G2 fails, the released prompt is
-  the documented fallback.
+- **Model registry:** Gemma at temperature 1.0 with max 512 new tokens; Qwen (deferred) at
+  temperature 0.7 with max 32768.
+- **Prompts:** G0 uses Fig. 21 verbatim (`gen_paper.txt`). It has one more sentence than the
+  released code's prompt ("Output each point on a separate line ... without annotations and
+  titles"). G0R uses the released-code prompt (`gen_repo.txt`): all 500 released Gemma chains
+  contain bold text or headings, so they were probably generated with it. Whichever of G0 and G0R
+  is closer to Table 2 becomes the baseline for G2 and the fixes. We use the chat format; the
+  released code fed raw text with no chat template (a documented fidelity risk).
 - **Run behavior:** per-chain output files that are skipped if they exist (resume after
   preemption); a per-chain log of input and output tokens, whether it hit max tokens, and GPU time.
 
-The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
+The pilot is one PACE job, `pace/pilot.sbatch`: G0, G0R and A1 (pan-and-scan) on challenges 1-20
+(100 images), seed 0, then scored, to avoid extra queue waits. It runs only after checkpoint 1,
+unless the user says otherwise.
 **Acceptance:**
-- [ ] 100 chains per model. A resubmitted job regenerates nothing that already exists.
-- [ ] Pilot F1 is within +/- 4 of Table 2 for both models; the looser bound reflects n=100.
+- [ ] 100 chains per condition (G0, G0R, A1). A resubmitted job regenerates nothing that already exists.
+- [ ] Pilot F1 of the chosen baseline (G0 or G0R) is within +/- 4 of Table 2 (25.23); the looser
+  bound reflects n=100.
 - [ ] 10 pilot chains are read side by side with released chains for the same images, and look like the same kind of output.
 - 2026-11-10: code done and unit-tested (`conditions.py`, `generate.py`, `generate_chains.py` with
   `--pilot`/`--dry-run`, `pace/generate.sbatch`, `score_chains.py --pilot`). Atomic chain writes make
   preempted jobs safe to resubmit. The pilot job waits for checkpoint 1 (G1 review).
-**Verify:** `uv run pytest -q tests/test_prompts.py`; `ssh pace 'ls ~/scratch/georc/out/G0/seed0 | wc -l'` gives 100.
+**Verify:** `uv run pytest -q tests/test_generate.py`; `ssh pace 'ls ~/scratch/georc/out/chains/G0/seed0 | wc -l'`
+gives 100 (likewise for G0R and A1).
 **Depends on:** T5.
-**Files:** `src/georc/generate.py`, `src/georc/prompts.py`, `scripts/generate_chains.py`,
-`pace/generate.sbatch`, `tests/test_prompts.py`. **Size:** M
+**Files:** `src/georc/conditions.py`, `src/georc/generate.py`, `src/georc/templates/gen_paper.txt`,
+`src/georc/templates/gen_repo.txt`, `scripts/generate_chains.py`, `pace/generate.sbatch`,
+`pace/pilot.sbatch`, `tests/test_generate.py`. **Size:** M
 
-### T7: Full baselines G0 and Q0 (gate G2)
-**Description:** 500 images x seed 0 for each model, scored. Results go to `results/baseline.csv`.
+### T7: Full Gemma baseline (gate G2)
+**Description:** 500 images x seed 0 for the baseline chosen at the pilot (G0 or G0R), scored.
+Results go to `results/baseline.csv`. Q0 is deferred.
 **Acceptance (G2):**
-- [ ] Mean F1 is within +/- 2.0 of Table 2 (Gemma 25.23, Qwen 29.09), and country accuracy within +/- 4 points (64.0, 69.4).
-- [ ] Truncation rate is reported for each model.
-**Verify:** `uv run python scripts/report.py --conditions G0 Q0`.
+- [ ] F1 (seed 0) is within +/- 2.0 of Table 2 (Gemma 25.23), and country accuracy within +/- 4 points (64.0).
+- [ ] Truncation rate is reported.
+**Verify:** `uv run python scripts/report.py --conditions G0` (or `G0R`).
 **Depends on:** T6. **Files:** `src/georc/conditions.py`, `results/baseline.csv`. **Size:** S
 
 ### Checkpoint 2: Baselines reproduced
@@ -174,13 +187,14 @@ The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
 
 ## Phase 3: Fix A (Gemma resolution)
 
-### T8: Pan-and-scan and tile modes, pilot
+### T8: Tile mode, pilot
 **Description:**
-- **A1:** `mm_processor_kwargs={"do_pan_and_scan": True}`.
+- **A1:** `mm_processor_kwargs={"do_pan_and_scan": True}`. Its pilot now runs in T6's combined
+  pilot job (`pace/pilot.sbatch`).
 - **A2:** `src/georc/tiles.py`. The full image plus a 2x4 grid of tiles, sent as a 9-image prompt
   with one fixed neutral sentence saying the first image is the full view and the rest are tiles in
   reading order.
-- **Pilot:** the 100 images, seed 0, both modes.
+- **Pilot:** the 100 images, seed 0, A2.
 **Acceptance:**
 - [ ] The tiles exactly cover the image, with no gaps or overlaps beyond rounding, and arrive in the stated order (unit test).
 - [ ] Logged image-token counts are about 256, 768 and 2,304 for G0, A1 and A2.
@@ -202,25 +216,27 @@ The pilot is challenges 1-20 (100 images), seed 0, both models, then scored.
 
 ### T10: B0 and B1 prompts, pilot, freeze
 **Description:**
-- **B0** (format-only): the Fig. 21 prompt plus format rules (one clue per line, no introduction or
-  summary, final line "Conclusion: <country>, <city>").
+- **B0** (format-only): the baseline prompt chosen at the pilot (Fig. 21 or released-code) plus
+  format rules (one clue per line, no introduction or summary, final line "Conclusion: <country>,
+  <city>").
 - **B1:** B0 plus the content guidance from paper Sec. 2.1.
-- **Pilot:** 100 images, seed 0, both models.
+- **Pilot:** 100 images, seed 0, Gemma (Qwen deferred).
 - **Freeze:** after the pilot, write the prompt hashes to `results/prompt_hashes.json`. Full runs
   refuse to start if a hash differs.
 **Acceptance:**
-- [ ] Unit test: the B1 text is the B0 text plus the guidance block. The B0 text is the Fig. 21 text plus the format block.
+- [ ] Unit test: the B1 text is the B0 text plus the guidance block. The B0 text is the baseline prompt text plus the format block.
 - [ ] Pilot chains parse into one clue per line in at least 90% of outputs.
 - [ ] Hashes are written.
-**Verify:** `uv run pytest -q tests/test_prompts.py`.
+**Verify:** `uv run pytest -q tests/test_generate.py`.
 **Depends on:** T7 and the prompt approval at checkpoint 2.
-**Files:** `src/georc/prompts.py`, `src/georc/conditions.py`, `tests/test_prompts.py`, `results/prompt_hashes.json`. **Size:** S
+**Files:** prompt template files under `src/georc/templates/`, `src/georc/conditions.py`,
+`tests/test_generate.py`, `results/prompt_hashes.json`. **Size:** S
 
 ### T11: Full Fix B runs
-**Description:** B0 and B1 x Gemma and Qwen x 500 images x seed 0, scored.
+**Description:** B0 and B1 x Gemma x 500 images x seed 0, scored. Qwen (Q-B0, Q-B1) is deferred.
 **Acceptance:**
-- [ ] 2,000 chains, all scored. The prompt-hash check passed at the start of every job.
-**Verify:** `uv run python scripts/report.py --conditions G0 G-B0 G-B1 Q0 Q-B0 Q-B1`.
+- [ ] 1,000 chains, all scored. The prompt-hash check passed at the start of every job.
+**Verify:** `uv run python scripts/report.py --conditions G0 G0R G-B0 G-B1`.
 **Depends on:** T10. **Files:** none new (runs only). **Size:** S
 
 ---
@@ -270,7 +286,7 @@ and verify the counts. Then `pace/cleanup.sh`:
    - home usage back to its starting level or below;
    - director directories and jobs listed identically before and after.
 **Acceptance:**
-- [ ] The laptop copy has 4,000 chains and all score files (count check).
+- [ ] The laptop copy has 3,000 chains and all score files (count check).
 - [ ] All three cleanup verifications pass, and the output is saved to `results/pace_cleanup.txt`.
 **Verify:** `ssh pace 'squeue -u sagrawal394 -h -o %j | grep -c ^georc- ; ls -d ~/scratch/georc'` gives `0` and "No such file".
 **Depends on:** checkpoint 3. **Files:** `pace/pull.sh`, `pace/cleanup.sh`, `results/pace_cleanup.txt`. **Size:** S
