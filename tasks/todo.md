@@ -132,6 +132,10 @@ report implemented and unit-tested; awaiting the PACE jobs.)
 **Size:** M
 
 ### Checkpoint 1: Scorer validated
+- 2026-11-10: the user approved submitting the pilot before this review, to save a queue wait
+  (job 15430745: G0, G0R, A1 on 100 images). Full runs still wait for this checkpoint.
+- Data kept: `pace/pull.sh` copies chains, scores, logs and the judge cache to `runs/georc/`, so
+  nothing has to be regenerated or rejudged after PACE scratch is purged.
 - [ ] G1 met, or an agreed fallback recorded in `SPEC.md`.
 - [ ] Human reviews `results/validation_*.csv` before any generation job.
 
