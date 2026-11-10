@@ -1,8 +1,10 @@
-"""Country-level accuracy: a judge reads the final guess from a chain as an ISO code.
+"""Country-level accuracy, judged two ways.
 
 The paper measures this "by an LLM judge against the ground truth location country in ISO
-format" but does not publish that prompt; ours is in templates/country.txt and is checked
-against the paper's Table 2 accuracies at gate G1.
+format" but does not publish that prompt. Both of ours are checked against Table 2 at gate G1:
+  strict (country.txt): the judge extracts one guessed country; the first named wins a hedge.
+  match (country_match.txt): the judge sees the true ISO code and says whether the final guess,
+    including any alternatives it offers, names that country.
 """
 
 import re
@@ -11,6 +13,18 @@ from collections.abc import Sequence
 from georc.judge import load_template
 
 _COUNTRY = re.compile(r'"country"\s*:\s*"([A-Za-z]{2})"')
+_MATCH = re.compile(r'"match"\s*:\s*(true|false)\b', re.IGNORECASE)
+
+
+def build_country_match_prompt(chain: str, true_country: str) -> str:
+    template = load_template("country_match.txt")
+    return template.replace("{country}", true_country.upper()).replace("{chain}", chain)
+
+
+def parse_match(reply: str) -> bool | None:
+    """True or False from {"match": ...}; None for anything else."""
+    found = _MATCH.search(reply)
+    return None if found is None else found.group(1).lower() == "true"
 
 
 def build_country_prompt(chain: str) -> str:

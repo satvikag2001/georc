@@ -32,12 +32,19 @@ class Check:
     detail: str
 
 
-def check_g1(summaries: Mapping[str, Mapping[str, float]]) -> list[Check]:
+def check_g1(
+    summaries: Mapping[str, Mapping[str, float]], country_key: str = "country_acc"
+) -> list[Check]:
     """Gate G1: our scorer, run on the released chains, reproduces Table 2.
 
     `summaries` maps chain-set name to its summary (f1, country_acc, ...); a missing chain set
-    raises KeyError rather than passing silently.
+    or measure raises KeyError rather than passing silently. `country_key` picks the country
+    measure: "country_acc" (strict) or "country_acc_match" (judge sees the true country).
     """
+    return check_f1(summaries) + check_country(summaries, country_key)
+
+
+def check_f1(summaries: Mapping[str, Mapping[str, float]]) -> list[Check]:
     checks = []
     for model in OPEN_MODELS:
         low, high = TABLE2[model].f1_ci
@@ -52,15 +59,6 @@ def check_g1(summaries: Mapping[str, Mapping[str, float]]) -> list[Check]:
         )
     order = tuple(sorted(OPEN_MODELS, key=lambda m: summaries[m]["f1"], reverse=True))
     checks.append(Check("F1 ranking matches the paper", order == OPEN_MODELS, " > ".join(order)))
-    for model in OPEN_MODELS:
-        ours, paper = summaries[model]["country_acc"], TABLE2[model].country
-        checks.append(
-            Check(
-                f"{model} country accuracy within 3 points",
-                abs(ours - paper) <= 3.0 + _EPS,
-                f"ours {ours:.1f}%, paper {paper:.1f}%",
-            )
-        )
     f1 = summaries["hallucinated"]["f1"]
     checks.append(
         Check(
@@ -69,6 +67,20 @@ def check_g1(summaries: Mapping[str, Mapping[str, float]]) -> list[Check]:
             f"ours {f1:.2f}",
         )
     )
+    return checks
+
+
+def check_country(summaries: Mapping[str, Mapping[str, float]], key: str) -> list[Check]:
+    checks = []
+    for model in OPEN_MODELS:
+        ours, paper = summaries[model][key], TABLE2[model].country
+        checks.append(
+            Check(
+                f"{model} country accuracy within 3 points",
+                abs(ours - paper) <= 3.0 + _EPS,
+                f"{key}: ours {ours:.1f}%, paper {paper:.1f}%",
+            )
+        )
     return checks
 
 
@@ -88,6 +100,7 @@ def validation_rows(summaries: Mapping[str, Mapping[str, float]]) -> list[dict]:
                 "f1_paper": paper.f1,
                 "f1_delta": ours["f1"] - paper.f1,
                 "country_ours": ours.get("country_acc"),
+                "country_match_ours": ours.get("country_acc_match"),
                 "country_paper": paper.country,
             }
         )

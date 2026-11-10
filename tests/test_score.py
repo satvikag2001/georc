@@ -186,3 +186,31 @@ def test_generation_prompt_is_the_paper_fig21_text():
     assert prompt.endswith(
         "only generate as output the reasoning chain without annotations and titles."
     )
+
+
+# --- country, second measure: the judge sees the true country ------------------------------------
+
+
+def test_match_prompt_gives_the_judge_the_iso_code_and_the_chain():
+    from georc.country import build_country_match_prompt
+
+    prompt = build_country_match_prompt("Conclusion: Kazakhstan or Kyrgyzstan", "kg")
+    assert "TRUE COUNTRY: KG" in prompt  # the paper compares against ISO codes
+    assert prompt.endswith("Conclusion: Kazakhstan or Kyrgyzstan")
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [('{"match": true}', True), ('{"match": false}', False), ('ok {"match": True}', True)],
+)
+def test_parse_match_reads_the_boolean(reply, expected):
+    from georc.country import parse_match
+
+    assert parse_match(reply) is expected
+
+
+@pytest.mark.parametrize("reply", ['{"match": "yes"}', "true", "{}"])
+def test_parse_match_returns_none_for_anything_else(reply):
+    from georc.country import parse_match
+
+    assert parse_match(reply) is None

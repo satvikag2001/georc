@@ -32,6 +32,8 @@ def judge_that_knows_kyrgyzstan() -> FunctionJudge:
     def reply(prompt: str) -> str:
         if prompt.startswith("Below is a reasoning chain"):
             return '{"country": "KG"}'
+        if prompt.startswith("Here is the country"):
+            return '{"match": true}' if "TRUE COUNTRY: KG" in prompt else '{"match": false}'
         second = prompt.rsplit("SECOND REASONING CHAIN:", 1)[1].strip()
         first = prompt.rsplit("SECOND REASONING CHAIN:", 1)[0]
         return '{"precision": 100}' if second in first else '{"precision": 0}'
@@ -52,6 +54,8 @@ def test_evaluate_released_chains_gives_pair_and_round_rows(tiny_dataset):
     ]
     assert summary["f1"] == 50.0
     assert summary["country_acc"] == 50.0
+    assert summary["country_acc_match"] == 50.0
+    assert [r["match"] for r in round_rows] == [1, 0]
 
 
 def test_directory_chain_set_refuses_an_incomplete_folder(tiny_dataset, tmp_path):

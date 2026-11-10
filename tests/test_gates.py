@@ -1,6 +1,6 @@
 import pytest
 
-from georc.gates import OPEN_MODELS, TABLE2, check_g1, validation_rows
+from georc.gates import OPEN_MODELS, TABLE2, check_country, check_g1, validation_rows
 
 
 def paper_like_summaries() -> dict[str, dict[str, float]]:
@@ -12,6 +12,7 @@ def paper_like_summaries() -> dict[str, dict[str, float]]:
             "recall": row.recall,
             "f1": row.f1,
             "country_acc": row.country if row.country is not None else 0.0,
+            "country_acc_match": row.country if row.country is not None else 0.0,
         }
     return out
 
@@ -68,3 +69,19 @@ def test_validation_rows_put_ours_next_to_the_paper():
     assert row["f1_paper"] == pytest.approx(29.09)
     assert row["f1_delta"] == pytest.approx(1.0)
     assert [r["model"] for r in validation_rows(summaries)] == [*OPEN_MODELS, "hallucinated"]
+
+
+def test_country_checks_can_use_the_second_measure():
+    summaries = paper_like_summaries()
+    summaries["qwen"]["country_acc"] = 60.0  # strict measure misses
+    assert failed(check_g1(summaries, country_key="country_acc_match")) == []
+    assert failed(check_country(summaries, "country_acc")) == [
+        "qwen country accuracy within 3 points"
+    ]
+
+
+def test_country_check_on_a_measure_that_was_not_computed_is_an_error():
+    summaries = paper_like_summaries()
+    del summaries["qwen"]["country_acc_match"]
+    with pytest.raises(KeyError):
+        check_country(summaries, "country_acc_match")

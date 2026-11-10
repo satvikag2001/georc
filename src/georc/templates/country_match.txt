@@ -1,0 +1,4 @@
+Here is the country where a photo was actually taken, as an ISO 3166-1 alpha-2 code, and a reasoning chain written to guess where the photo was taken. Does the chain's final location guess include that country? Answer true if the country is the final guess or one of the alternatives offered in the final guess. Answer false if the chain names only other countries or no country.
+Respond only with a JSON object, for example: {"match": true}.
+TRUE COUNTRY: {country}
+REASONING CHAIN: {chain}

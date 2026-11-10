@@ -121,6 +121,9 @@ report implemented and unit-tested; awaiting the PACE jobs.)
   under Table 2 for every model, mostly from precision. Judge seed noise is 0.02 F1. Country accuracy
   is 6-8 points low; hedged guesses ("Kazakhstan or Kyrgyzstan") look like the cause. Fallback jobs
   submitted: greedy 15427946, released-code rubric 15427947.
+- 2026-11-10 (approved): second country measure, `country_acc_match`. The judge sees the true ISO
+  code and says whether the final guess, alternatives included, names it. Both measures are reported;
+  whichever reproduces Table 2 is locked in before any generation. Rerun with cached F1: job 15428120.
 **Depends on:** T2, T3, T4.
 **Files:** `scripts/score_chains.py`, `src/georc/vllm_backend.py`, `pace/score.sbatch`, `results/validation.csv`.
 **Size:** M

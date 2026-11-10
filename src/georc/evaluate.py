@@ -11,7 +11,13 @@ from dataclasses import asdict
 from pathlib import Path
 from statistics import fmean
 
-from georc.country import build_country_prompt, country_accuracy, parse_country
+from georc.country import (
+    build_country_match_prompt,
+    build_country_prompt,
+    country_accuracy,
+    parse_country,
+    parse_match,
+)
 from georc.data import Pair, Round, released_chain_path
 from georc.judge import Judge
 from georc.score import score_pairs, summarize
@@ -44,14 +50,26 @@ def evaluate(
     ]
     replies = judge.complete([build_country_prompt(chains[r.key]) for r in rounds])
     guesses = [parse_country(reply) for reply in replies]
+    match_replies = judge.complete(
+        [build_country_match_prompt(chains[r.key], r.country) for r in rounds]
+    )
+    matches = [parse_match(reply) for reply in match_replies]
     round_rows = [
-        {"round": r.key, "truth": r.country, "guess": g or "", "correct": int(g == r.country)}
-        for r, g in zip(rounds, guesses, strict=True)
+        {
+            "round": r.key,
+            "truth": r.country,
+            "guess": g or "",
+            "correct": int(g == r.country),
+            "match": int(m is True),
+        }
+        for r, g, m in zip(rounds, guesses, matches, strict=True)
     ]
     summary = {
         **summarize(scores),
         "country_acc": country_accuracy(guesses, [r.country for r in rounds]),
         "country_unparsed": sum(g is None for g in guesses),
+        "country_acc_match": 100.0 * sum(m is True for m in matches) / len(matches),
+        "country_match_unparsed": sum(m is None for m in matches),
         "mean_points": fmean(s.n_candidate_points for s in scores),
     }
     return pair_rows, round_rows, summary
