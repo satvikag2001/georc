@@ -30,6 +30,27 @@ def test_baseline_conditions_use_the_paper_prompt_on_each_model():
     assert CONDITIONS["G0"].mm_kwargs is None
 
 
+def test_repo_prompt_baseline_uses_the_released_code_prompt_on_gemma():
+    g0r = CONDITIONS["G0R"]
+    assert (g0r.model, g0r.prompt, g0r.mm_kwargs) == ("gemma3-12b", "gen_repo.txt", None)
+
+
+def test_fix_a_is_the_paper_baseline_plus_pan_and_scan():
+    a1 = CONDITIONS["A1"]
+    assert (a1.model, a1.prompt) == ("gemma3-12b", "gen_paper.txt")
+    assert a1.mm_kwargs == {"do_pan_and_scan": True}
+
+
+def test_repo_prompt_is_the_released_code_string_not_the_paper_figure():
+    text = load_template("gen_repo.txt")
+    assert text.lstrip().startswith("You are a professional GeoGuessr player.")
+    assert "without annotations and titles" not in text
+    assert "without annotations and titles" in load_template("gen_paper.txt")
+    # Kept verbatim from the released Python triple-quoted string, indentation included.
+    assert text.startswith("\n        You are")
+    assert text.endswith("location estimate. \n        ")
+
+
 def test_chain_path_layout(tmp_path):
     rnd = make_rounds(["abc"])[1]
     assert chain_path(tmp_path, "G0", 2, rnd) == tmp_path / "chains" / "G0" / "seed2" / "abc_2.txt"

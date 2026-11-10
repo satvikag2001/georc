@@ -3,6 +3,8 @@
 import subprocess
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -73,6 +75,51 @@ def test_inside_a_job_every_cache_and_home_is_under_the_project_root(tmp_path):
 
 def test_outside_a_job_home_is_left_alone(tmp_path):
     assert run_bash("source pace/common.sh; echo $HOME", tmp_path).strip() == str(tmp_path)
+
+
+def pilot_calls(tmp_path: Path, *args: str) -> list[list[str]]:
+    """Run pace/pilot.sbatch with a stub common.sh whose python only echoes its arguments."""
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir(exist_ok=True)
+    (fake_bin / "python").write_text('#!/usr/bin/env bash\necho "$@"\n')
+    (fake_bin / "nvidia-smi").write_text("#!/usr/bin/env bash\n")
+    for tool in fake_bin.iterdir():
+        tool.chmod(0o755)
+    common = tmp_path / "scratch" / "georc" / "code" / "pace" / "common.sh"
+    common.parent.mkdir(parents=True)
+    common.write_text(f"PY={fake_bin / 'python'} GEORC_CODE=/c GEORC_DATA=/d GEORC_OUT=/o\n")
+    return [
+        line.split()
+        for line in run_bash(f"bash pace/pilot.sbatch {' '.join(args)}", tmp_path).splitlines()
+    ]
+
+
+def test_pilot_generates_each_condition_then_scores_them_all_in_one_run(tmp_path):
+    calls = pilot_calls(tmp_path)
+    *generate, score = calls
+    common = ["--data", "/d", "--out", "/o"]
+    assert generate == [
+        ["/c/scripts/generate_chains.py", *common, "--condition", c, "--seeds", "0", "--pilot"]
+        for c in ["G0", "G0R", "A1"]
+    ]
+    assert score[: len(common) + 1] == ["/c/scripts/score_chains.py", *common]
+    assert score[score.index("--variant") + 1] == "paper"
+    assert {"--pilot", "--seed"} <= set(score) and score[score.index("--seed") + 1] == "0"
+    dirs = score[score.index("--dirs") + 1 :]
+    assert dirs == [f"{c}=/o/chains/{c}/seed0" for c in ["G0", "G0R", "A1"]]
+
+
+def test_pilot_passes_the_judge_variant_and_takes_conditions_from_arguments(tmp_path):
+    *generate, score = pilot_calls(tmp_path, "--variant", "repo", "A1")
+    assert [g[g.index("--condition") + 1] for g in generate] == ["A1"]
+    assert score[score.index("--variant") + 1] == "repo"
+    assert score[score.index("--dirs") + 1 :] == ["A1=/o/chains/A1/seed0"]
+
+
+def test_pilot_rejects_an_unknown_variant_before_spending_gpu_time_on_generation(tmp_path):
+    with pytest.raises(subprocess.CalledProcessError) as failure:
+        pilot_calls(tmp_path, "--variant", "fig21", "G0")
+    assert "generate_chains.py" not in failure.value.stdout
 
 
 def test_no_script_relies_on_sbatch_dependency_env_var():

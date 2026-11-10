@@ -3,7 +3,7 @@
 # Safe to re-run. Installs uv, Python 3.12, vLLM and this package, all under $GEORC_ROOT.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
-VLLM_VERSION="${VLLM_VERSION:?set VLLM_VERSION, e.g. VLLM_VERSION=0.11.0}"
+VLLM_VERSION="${VLLM_VERSION:-0.32.0}"  # the version installed on PACE; override to change
 
 if [ ! -x "$GEORC_ROOT/bin/uv" ]; then
   curl -LsSf https://astral.sh/uv/install.sh |
