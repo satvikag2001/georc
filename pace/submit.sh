@@ -18,6 +18,6 @@ NAME="${JOB_PREFIX}${SCRIPT%.sbatch}"
 sbatch --parsable \
   --account="$PACE_ACCOUNT" --qos="$PACE_QOS" \
   --partition="$PACE_PARTITIONS" --gres=gpu:1 --constraint="$PACE_CONSTRAINT" \
-  "${DEPENDENCY[@]}" \
+  ${PACE_EXCLUDE:+--exclude="$PACE_EXCLUDE"} "${DEPENDENCY[@]}" \
   --job-name="$NAME" --output="$GEORC_LOGS/%x-%j.out" \
   "$GEORC_CODE/pace/$SCRIPT" "$@"

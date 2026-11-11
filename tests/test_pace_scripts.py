@@ -37,6 +37,7 @@ def test_submit_uses_free_tier_and_bf16_gpus_only(tmp_path):
     # A partition list alone let an embers job land on a V100 (no bf16); node features cannot.
     assert "--constraint=A100|H100|H200|L40S|RTX-Pro-Blackwell" in args
     assert "--job-name=georc-preflight" in args
+    assert "--exclude=atl1-1-03-020-6-0" in args  # the node with busy GPUs
 
 
 def test_submit_after_adds_a_real_dependency_that_dies_with_its_parent(tmp_path):

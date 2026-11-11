@@ -48,6 +48,9 @@ export PACE_PARTITIONS="gpu-a100,gpu-h100,gpu-h200,gpu-l40s,gpu-rtxpro-blackwell
 # Job 15325036 still landed on a V100 (no bf16) despite the partition list; node features
 # are a hard filter.
 export PACE_CONSTRAINT="A100|H100|H200|L40S|RTX-Pro-Blackwell"
+# Jobs 15449667-15459955: one Blackwell node kept failing with "CUDA device busy" on most of
+# its GPUs (24 of 28 jobs lost). Comma-separated nodes to avoid; empty for none.
+export PACE_EXCLUDE="${PACE_EXCLUDE-atl1-1-03-020-6-0}"
 export JOB_PREFIX="georc-"
 
 if [ -f "$GEORC_ROOT/.hf_token" ]; then
