@@ -260,9 +260,13 @@ Results go to `results/baseline.csv`. Q0 is deferred.
   with CIs, cost, the verdict per the win rule, the B1 vs B0 content effect, and three example
   chains per fix.
 **Acceptance:**
-- [ ] The bootstrap recovers a known planted effect on synthetic data (unit test).
-- [ ] The win-rule evaluator is tested on both sides of each threshold.
+- [x] The bootstrap recovers a known planted effect on synthetic data (unit test).
+- [x] The win-rule evaluator is tested on both sides of each threshold.
 - [ ] REPORT.md states every verdict, including negative ones.
+- Status 2026-11-12: `stats.py` and `report.py --compare SCORES BASE TREAT --tag TAG` done. A1 vs G0
+  (500 images, seed 0): F1 +1.44 [+0.39, +2.52] with the released-code rubric, +1.36 [+0.11, +2.64]
+  with Fig. 14; country +4.0 points [+1.0, +7.0]; win rule met under both. Still to do:
+  `results/summary.csv`, `REPORT.md`, cost diagnostics, verdicts without the 100 pilot images.
 **Verify:** `uv run pytest -q tests/test_stats.py`; human reads `results/REPORT.md`.
 **Depends on:** T9, T11.
 **Files:** `src/georc/stats.py`, `scripts/report.py`, `tests/test_stats.py`, `results/REPORT.md`, `results/summary.csv`.

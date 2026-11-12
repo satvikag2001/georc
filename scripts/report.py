@@ -1,11 +1,13 @@
 """Print gate G1 tables and verdicts from score summaries pulled from PACE (pace/pull.sh)."""
 
 import argparse
+import csv
 from pathlib import Path
 
 from georc import authors
 from georc.evaluate import load_summaries, write_rows
 from georc.gates import OPEN_MODELS, TABLE2, check_country, check_f1, validation_rows
+from georc.stats import compare, paired_bootstrap, win
 
 
 def report_validation(scores: Path, tag: str, noise_tag: str, out: Path) -> None:
@@ -91,6 +93,26 @@ def report_authors(run_dir: Path) -> None:
         )
 
 
+def report_compare(scores: Path, base: str, treat: str, tag: str) -> None:
+    def rows(name: str, file: str) -> list[dict]:
+        with (scores / f"{name}__{tag}" / file).open() as handle:
+            return list(csv.DictReader(handle))
+
+    print(f"{treat} minus {base} ({tag}), 95% CI from a bootstrap over images")
+    lows = {}
+    for label, file, field, key, scale in [
+        ("precision", "pairs.csv", "precision", ("round", "expert"), 1.0),
+        ("recall", "pairs.csv", "recall", ("round", "expert"), 1.0),
+        ("F1", "pairs.csv", "f1", ("round", "expert"), 1.0),
+        ("country, points", "rounds.csv", "correct", ("round",), 100.0),
+    ]:
+        diffs = compare(rows(base, file), rows(treat, file), field, key, scale)
+        mean, low, high = paired_bootstrap(diffs)
+        lows[label] = low
+        print(f"  {label:16s} {mean:+6.2f}  [{low:+.2f}, {high:+.2f}]  images={len(diffs)}")
+    print(f"  win rule: {'MET' if win(lows['F1'], lows['country, points']) else 'NOT MET'}")
+
+
 def show(checks) -> None:
     for check in checks:
         print(f"[{'PASS' if check.passed else 'FAIL'}] {check.name}: {check.detail}")
@@ -104,12 +126,20 @@ def main() -> None:
         type=Path,
         help="run dir of the authors' scorer, e.g. runs/georc/authors/float32_s0",
     )
+    parser.add_argument(
+        "--compare",
+        nargs=3,
+        metavar=("SCORES", "BASE", "TREAT"),
+        help="e.g. runs/georc/scores G0 A1",
+    )
     parser.add_argument("--tag", default="paper_s0")
     parser.add_argument("--noise-tag", default="paper_s1")
     parser.add_argument("--out", type=Path, default=Path("results/validation.csv"))
     args = parser.parse_args()
-    if not (args.validation or args.authors):
-        parser.error("give --validation and/or --authors")
+    if not (args.validation or args.authors or args.compare):
+        parser.error("give --validation, --authors and/or --compare")
+    if args.compare:
+        report_compare(Path(args.compare[0]), *args.compare[1:], args.tag)
     if args.validation:
         report_validation(args.validation, args.tag, args.noise_tag, args.out)
     if args.authors:
