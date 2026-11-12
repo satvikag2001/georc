@@ -7,7 +7,7 @@ from pathlib import Path
 from georc.data import load_pairs, load_rounds
 from georc.evaluate import directory_chain_set, evaluate, released_chain_set, write_rows
 from georc.generate import pilot_rounds, restrict_pairs
-from georc.judge import CachedJudge
+from georc.judge import PROMPT_VARIANTS, CachedJudge
 
 
 def main() -> None:
@@ -16,7 +16,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--released", nargs="*", default=[])
     parser.add_argument("--dirs", nargs="*", default=[], help="name=folder pairs")
-    parser.add_argument("--variant", choices=["paper", "repo"], default="paper")
+    parser.add_argument("--variant", choices=list(PROMPT_VARIANTS), default="paper")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--greedy", action="store_true")
     parser.add_argument("--pilot", action="store_true", help="first 20 challenges only")

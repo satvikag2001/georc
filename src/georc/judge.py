@@ -9,8 +9,13 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Protocol
 
-# "paper": the GeoRC Fig. 14 rubric (default); "repo": the released score.py rubric (G1 fallback).
-PROMPT_VARIANTS = {"paper": "judge_paper.txt", "repo": "judge_repo.txt"}
+# "paper": the GeoRC Fig. 14 rubric (default); "repo": the released score.py rubric (G1 fallback);
+# "paper_layout": Fig. 14's words in the released f-string's layout (formatting sensitivity check).
+PROMPT_VARIANTS = {
+    "paper": "judge_paper.txt",
+    "repo": "judge_repo.txt",
+    "paper_layout": "judge_paper_layout.txt",
+}
 
 _JSON_OBJECT = re.compile(r"\{.*?\}", re.DOTALL)
 _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
