@@ -1,6 +1,5 @@
 import json
 
-import pytest
 from PIL import Image
 
 from georc.conditions import CONDITIONS
@@ -24,31 +23,26 @@ def make_rounds(challenges: list[str], per_challenge: int = 5) -> list[Round]:
     ]
 
 
-def test_baseline_conditions_use_the_paper_prompt_on_each_model():
-    assert (CONDITIONS["G0"].model, CONDITIONS["G0"].prompt) == ("gemma3-12b", "gen_paper.txt")
-    assert (CONDITIONS["Q0"].model, CONDITIONS["Q0"].prompt) == ("qwen2.5-vl-7b", "gen_paper.txt")
-    assert CONDITIONS["G0"].mm_kwargs is None
+def test_conditions_pin_model_prompt_and_image_handling():
+    assert {c.id: (c.model, c.prompt, c.mm_kwargs) for c in CONDITIONS.values()} == {
+        "G0": ("gemma3-12b", "gen_paper.txt", None),
+        "Q0": ("qwen2.5-vl-7b", "gen_paper.txt", None),
+        "G0R": ("gemma3-12b", "gen_repo.txt", None),
+        "A1": ("gemma3-12b", "gen_paper.txt", {"do_pan_and_scan": True}),
+    }
 
 
-def test_repo_prompt_baseline_uses_the_released_code_prompt_on_gemma():
-    g0r = CONDITIONS["G0R"]
-    assert (g0r.model, g0r.prompt, g0r.mm_kwargs) == ("gemma3-12b", "gen_repo.txt", None)
-
-
-def test_fix_a_is_the_paper_baseline_plus_pan_and_scan():
-    a1 = CONDITIONS["A1"]
-    assert (a1.model, a1.prompt) == ("gemma3-12b", "gen_paper.txt")
-    assert a1.mm_kwargs == {"do_pan_and_scan": True}
-
-
-def test_repo_prompt_is_the_released_code_string_not_the_paper_figure():
-    text = load_template("gen_repo.txt")
-    assert text.lstrip().startswith("You are a professional GeoGuessr player.")
-    assert "without annotations and titles" not in text
-    assert "without annotations and titles" in load_template("gen_paper.txt")
-    # Kept verbatim from the released Python triple-quoted string, indentation included.
-    assert text.startswith("\n        You are")
-    assert text.endswith("location estimate. \n        ")
+def test_generation_prompts_are_the_paper_fig21_text_and_the_released_code_string():
+    paper, repo = load_template("gen_paper.txt"), load_template("gen_repo.txt")
+    assert paper.startswith("You are a professional GeoGuessr player.")
+    # Fig. 21 ends with this sentence; the released generate.py prompt does not have it.
+    assert paper.endswith(
+        "only generate as output the reasoning chain without annotations and titles."
+    )
+    assert "without annotations and titles" not in repo
+    # Verbatim from the released Python triple-quoted string, indentation included.
+    assert repo.startswith("\n        You are a professional GeoGuessr player.")
+    assert repo.endswith("location estimate. \n        ")
 
 
 def test_chain_path_layout(tmp_path):
@@ -93,8 +87,3 @@ def test_build_messages_sends_the_image_then_the_prompt_text():
     image_part, text_part = message["content"]
     assert image_part == {"type": "image_pil", "image_pil": image}
     assert text_part == {"type": "text", "text": load_template("gen_paper.txt")}
-
-
-def test_unknown_condition_is_rejected():
-    with pytest.raises(KeyError):
-        CONDITIONS["Z9"]

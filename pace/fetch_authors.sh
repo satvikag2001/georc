@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Login node: clone the GeoRC authors' repository at the commit we reproduce (a7a1679) into
-# $GEORC_ROOT/authors/GeoRC and apply patches/authors_a7a1679.patch (crash and plumbing fixes
-# only). Safe to re-run: the clone is reset to that commit first, so an updated patch replaces
-# the old one. Installs nothing; it checks that the venv imports their scorer.
+# Login node: clone the authors' repository at a7a1679 and apply patches/authors_a7a1679.patch.
+# Re-runnable: the clone is reset to the commit first, so an updated patch replaces the old one.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 URL="${GEORC_AUTHORS_URL:-https://github.com/talrejamohit03/GeoRC.git}"
@@ -18,8 +16,7 @@ git -C "$DEST" apply "$PATCH"
 echo "$DEST: $(git -C "$DEST" rev-parse --short HEAD) + $(basename "$PATCH")"
 git -C "$DEST" status --short
 
-# Their score.py imports torch, transformers and pillow at load time; the scorer needs nothing
-# else (sentence-transformers is optional after the patch).
+# Check the venv imports their scorer (sentence-transformers is optional after the patch).
 "$PY" - "$DEST" <<'EOF'
 import sys
 

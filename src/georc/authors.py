@@ -1,12 +1,4 @@
-"""Feed the GeoRC authors' released scorer the released dataset, and summarize what it returns.
-
-Their `score.py` (commit a7a1679, run by scripts/authors_score.py) reads the expert chain from
-<challenge>/Human_Chain_3.txt and candidates from <challenge>/<pattern><round>.txt. The released
-dataset has Human_Expert_N.txt instead, so `build_view` links one expert's file under that name
-and their code runs unchanged; scoring every expert this way gives the paper's 800 pairs per
-chain set (Table 2, N = 800). Work is split into units of one chain set, one expert and one
-challenge (five pairs), each saved with the raw judge replies.
-"""
+"""Lay out and summarize runs of the GeoRC authors' released scorer (score.py at a7a1679)."""
 
 import json
 import math
@@ -18,19 +10,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from statistics import fmean, stdev
 
-from georc.data import load_rounds
+from georc.data import chain_prefix, load_rounds
 from georc.judge import parse_score
 
-AUTHORS_COMMIT = "a7a167979b3b355c29d59d36e3bff66c79f6a530"
 TAGS: tuple[str, ...] = ("qwen", "gemma3_12b", "llama3_11b", "qwen3", "hallucinated")
-# How the patched score.py reads a judge reply (GEORC_SCORE_KEY); "first_number" is our own
+# How the patched score.py reads a judge reply (GEORC_SCORE_KEY); "first_number" is our
 # scorer's parse_score, for comparison only.
 SCORE_KEYS: tuple[str, ...] = ("fallback", "precision", "released")
 READINGS: tuple[str, ...] = (*SCORE_KEYS, "first_number")
 ROUNDS = 5  # EvaluationPipeline.run(rounds=5)
 
-# P, R, F1 in Table 2 of arXiv v1 (29 Jan 2026), also the leaderboard.json in the authors'
-# repository at a7a1679. v2 (georc.gates.TABLE2) changed every one; country accuracy did not.
+# P, R, F1 in Table 2 of arXiv v1 (also the leaderboard.json at a7a1679). v2 (gates.TABLE2)
+# changed every one; country accuracy did not change.
 TABLE2_V1: dict[str, tuple[float, float, float]] = {
     "qwen": (29.06, 44.22, 31.63),
     "gemma3_12b": (38.20, 32.77, 31.21),
@@ -44,6 +35,8 @@ _JSON_OBJECT = re.compile(r"\{.*?\}", re.DOTALL)  # as in their _get_llm_score
 
 @dataclass(frozen=True)
 class Unit:
+    """One chain set, one expert, one challenge: five scored pairs."""
+
     tag: str
     expert: str  # e.g. "Human_Expert_2"
     challenge: str
@@ -52,15 +45,8 @@ class Unit:
         return run_dir / "units" / self.tag / self.expert / f"{self.challenge}.json"
 
 
-def candidate_pattern(tag: str) -> str:
-    """The `--pattern` their pipeline needs: candidate files are <pattern><round>.txt."""
-    if tag in ("hallucinated", "paraphrased"):
-        return f"{tag}_reasoning_chain_"
-    return f"candidate_reasoning_chain_{tag}_"
-
-
 def list_units(data: Path, tags: Iterable[str]) -> list[Unit]:
-    """Every (chain set, expert, challenge) unit, by tag, then challenge, then expert."""
+    """Every unit, by tag, then challenge, then expert."""
     challenges = sorted({r.challenge for r in load_rounds(data)})
     experts = {c: sorted(f.stem for f in (data / c).glob("Human_Expert_*.txt")) for c in challenges}
     return [
@@ -80,19 +66,20 @@ def shard(units: Sequence[Unit], spec: str) -> list[Unit]:
 
 
 def build_view(data: Path, views: Path, unit: Unit) -> Path:
-    """A folder holding just this unit's challenge, laid out as their pipeline expects.
+    """A folder laid out as their pipeline expects, for this unit only.
 
-    Returns <views>/<tag>/<expert>/<challenge>, whose only subfolder <challenge> links
-    Human_Chain_3.txt to the expert's file and the five candidate files of `unit.tag`. Safe to
-    call again. A missing file is an error here, where their pipeline would skip it silently.
+    Their code reads the expert chain from <challenge>/Human_Chain_3.txt, so this links the unit's
+    expert file under that name, next to the five candidate files; scoring every expert this way
+    gives the paper's 800 pairs per chain set. Returns <views>/<tag>/<expert>/<challenge>, whose
+    only subfolder is <challenge>. A missing file is an error here; their pipeline skips it.
     """
     source = data / unit.challenge
     root = views / unit.tag / unit.expert / unit.challenge
     folder = root / unit.challenge
     folder.mkdir(parents=True, exist_ok=True)
-    pattern = candidate_pattern(unit.tag)
+    prefix = chain_prefix(unit.tag)
     links = {"Human_Chain_3.txt": source / f"{unit.expert}.txt"}
-    links |= {f"{pattern}{i}.txt": source / f"{pattern}{i}.txt" for i in range(1, ROUNDS + 1)}
+    links |= {f"{prefix}{i}.txt": source / f"{prefix}{i}.txt" for i in range(1, ROUNDS + 1)}
     for name, target in links.items():
         if not target.exists():
             raise FileNotFoundError(target)
@@ -112,8 +99,8 @@ def unit_seed(unit: Unit, base: int) -> int:
 def read_score(reply: str, metric: str, reading: str) -> float:
     """One judge reply as a 0-100 score, read the way `reading` says.
 
-    The SCORE_KEYS readings repeat the patched `_get_llm_score`: the first {...} is parsed as
-    JSON and a key is read; anything unparseable scores 0. "first_number" is our scorer's reading.
+    The SCORE_KEYS readings repeat the patched `_get_llm_score`: the first {...} is parsed as JSON
+    and a key is read; anything unparseable scores 0.
     """
     if reading not in READINGS:
         raise ValueError(f"unknown reading: {reading}")
@@ -149,8 +136,8 @@ def pair_metrics(calls: Sequence[dict], reading: str) -> dict[str, float]:
 def summarize(pairs: Sequence[dict]) -> dict[str, float]:
     """Means of per-pair values (as our scorer), plus F1 of the means and a normal-theory CI.
 
-    Their code writes per-pair results only; neither it nor the paper says how Table 6's 95% CI
-    was computed, so `f1_ci95` (mean +/- 1.96 standard errors over pairs) is a reference only.
+    Neither their code nor the paper says how Table 6's 95% CI was computed, so `f1_ci95`
+    (mean +/- 1.96 standard errors over pairs) is a reference only.
     """
     p, r, f1 = (fmean(x[k] for x in pairs) for k in ("precision", "recall", "f1"))
     half = 1.96 * stdev(x["f1"] for x in pairs) / math.sqrt(len(pairs)) if len(pairs) > 1 else 0

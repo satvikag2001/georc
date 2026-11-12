@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# One-time environment build on the PACE login node (compute nodes have no internet).
-# Safe to re-run. Installs uv, Python 3.12, vLLM and this package, all under $GEORC_ROOT.
+# Login node, re-runnable: install uv, Python 3.12, vLLM and this package under $GEORC_ROOT.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
-VLLM_VERSION="${VLLM_VERSION:-0.32.0}"  # the version installed on PACE; override to change
+VLLM_VERSION="${VLLM_VERSION:-0.32.0}"
 
 if [ ! -x "$GEORC_ROOT/bin/uv" ]; then
   curl -LsSf https://astral.sh/uv/install.sh |
     env UV_INSTALL_DIR="$GEORC_ROOT/bin" UV_NO_MODIFY_PATH=1 sh
-  # The installer always writes a receipt to ~/.config/uv; keep home untouched.
+  # The installer always writes a receipt to ~/.config/uv; keep $HOME untouched.
   receipt="$HOME/.config/uv/uv-receipt.json"
   if grep -q "\"install_prefix\":\"$GEORC_ROOT/bin\"" "$receipt" 2>/dev/null; then
     rm "$receipt"

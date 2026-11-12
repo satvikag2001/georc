@@ -1,11 +1,4 @@
-"""GPU smoke test for one model (run inside pace/preflight.sbatch, offline).
-
-judge:   one-to-all calls on a matching and a mismatched point, plus one country call.
-qwen-vl: one chain for the first round with the paper prompt.
-gemma:   one chain at the default 896x896 input and one with pan-and-scan, comparing prompt
-         token counts (pan-and-scan should add image crops).
-Exits non-zero if a model fails to load or generate.
-"""
+"""GPU smoke test for one model, run offline in pace/preflight.sbatch; non-zero exit on failure."""
 
 import argparse
 import time
@@ -16,32 +9,9 @@ from vllm import LLM
 
 from georc.country import build_country_prompt, parse_country
 from georc.data import load_rounds
-from georc.judge import build_prompt, load_template, parse_score
-from georc.models import GENERATORS, ModelSpec
-
-
-def make_llm(spec: ModelSpec, max_model_len: int, images: int) -> LLM:
-    kwargs = dict(
-        model=spec.repo,
-        revision=spec.revision,
-        dtype="bfloat16",
-        max_model_len=max_model_len,
-        gpu_memory_utilization=0.85,
-        seed=0,
-    )
-    if images:
-        kwargs["limit_mm_per_prompt"] = {"image": images}
-    return LLM(**kwargs)
-
-
-def sampling(llm: LLM, spec: ModelSpec, max_tokens: int):
-    params = llm.get_default_sampling_params()
-    params.max_tokens = max_tokens
-    if spec.temperature is not None:
-        params.temperature = spec.temperature
-    params.seed = 0
-    print("sampling:", params)
-    return params
+from georc.generate import build_messages
+from georc.judge import build_prompt, parse_score
+from georc.models import GENERATORS
 
 
 def run_judge() -> None:
@@ -62,19 +32,10 @@ def run_judge() -> None:
     print("country reply:", replies[2], "->", parse_country(replies[2]))
 
 
-def one_chain(llm: LLM, params, image: Image.Image, mm_kwargs: dict | None = None):
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "image_pil", "image_pil": image},
-                {"type": "text", "text": load_template("gen_paper.txt")},
-            ],
-        }
-    ]
+def one_chain(llm: LLM, params, image: Image.Image, mm_kwargs: dict | None = None) -> int:
     extra = {"mm_processor_kwargs": mm_kwargs} if mm_kwargs else {}
     start = time.time()
-    [out] = llm.chat(messages, params, **extra)
+    [out] = llm.chat(build_messages("gen_paper.txt", image), params, **extra)
     seconds = time.time() - start
     completion = out.outputs[0]
     print(
@@ -88,8 +49,21 @@ def one_chain(llm: LLM, params, image: Image.Image, mm_kwargs: dict | None = Non
 def run_generator(name: str, data: Path) -> None:
     spec = GENERATORS[name]
     image = Image.open(load_rounds(data)[0].image).convert("RGB")
-    llm = make_llm(spec, max_model_len=40960 if name == "qwen2.5-vl-7b" else 8192, images=9)
-    params = sampling(llm, spec, max_tokens=min(spec.max_tokens, 1024))
+    llm = LLM(
+        model=spec.repo,
+        revision=spec.revision,
+        dtype="bfloat16",
+        max_model_len=40960 if name == "qwen2.5-vl-7b" else 8192,
+        gpu_memory_utilization=0.85,
+        seed=0,
+        limit_mm_per_prompt={"image": 9},
+    )
+    params = llm.get_default_sampling_params()
+    params.max_tokens = min(spec.max_tokens, 1024)
+    if spec.temperature is not None:
+        params.temperature = spec.temperature
+    params.seed = 0
+    print("sampling:", params)
     base = one_chain(llm, params, image)
     if name == "gemma3-12b":
         panned = one_chain(llm, params, image, {"do_pan_and_scan": True})

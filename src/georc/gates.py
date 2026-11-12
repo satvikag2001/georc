@@ -1,4 +1,4 @@
-"""Pass/fail checks for the study's gates, against the paper's Table 2 (v2) and Table 6."""
+"""Gate G1 checks against the paper's Table 2 (v2) and Table 6; missing values raise KeyError."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -32,18 +32,6 @@ class Check:
     detail: str
 
 
-def check_g1(
-    summaries: Mapping[str, Mapping[str, float]], country_key: str = "country_acc"
-) -> list[Check]:
-    """Gate G1: our scorer, run on the released chains, reproduces Table 2.
-
-    `summaries` maps chain-set name to its summary (f1, country_acc, ...); a missing chain set
-    or measure raises KeyError rather than passing silently. `country_key` picks the country
-    measure: "country_acc" (strict) or "country_acc_match" (judge sees the true country).
-    """
-    return check_f1(summaries) + check_country(summaries, country_key)
-
-
 def check_f1(summaries: Mapping[str, Mapping[str, float]]) -> list[Check]:
     checks = []
     for model in OPEN_MODELS:
@@ -71,6 +59,7 @@ def check_f1(summaries: Mapping[str, Mapping[str, float]]) -> list[Check]:
 
 
 def check_country(summaries: Mapping[str, Mapping[str, float]], key: str) -> list[Check]:
+    """`key`: "country_acc" (strict) or "country_acc_match" (the judge sees the true country)."""
     checks = []
     for model in OPEN_MODELS:
         ours, paper = summaries[model][key], TABLE2[model].country
@@ -85,7 +74,7 @@ def check_country(summaries: Mapping[str, Mapping[str, float]], key: str) -> lis
 
 
 def validation_rows(summaries: Mapping[str, Mapping[str, float]]) -> list[dict]:
-    """One row per released chain set: our precision/recall/F1/country next to the paper's."""
+    """One row per released chain set: ours next to the paper's."""
     rows = []
     for model in (*OPEN_MODELS, "hallucinated"):
         ours, paper = summaries[model], TABLE2[model]

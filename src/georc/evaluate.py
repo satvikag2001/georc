@@ -1,8 +1,4 @@
-"""Score a set of chains (released or generated) against the expert chains with a judge.
-
-A "chain set" maps each round key ("<challenge>_<index>") to the chain text for that round.
-Pair rows feed F1; round rows feed country accuracy.
-"""
+"""Score a chain set (round key -> chain text) against the expert chains with a judge."""
 
 import csv
 import json

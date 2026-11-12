@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Shared PACE settings for the GeoRC study; sourced by every pace/ script and sbatch file.
-#
-# Everything this project creates on PACE lives under $GEORC_ROOT: code, uv itself, Python,
-# the venv, model weights, the dataset, every cache, outputs and logs. pace/cleanup.sh removes
-# exactly that directory, so nothing may be written to $HOME (20 GB quota, 14.4 GB used).
+# Shared PACE settings, sourced by every pace/ script. Everything this project writes lives under
+# $GEORC_ROOT (cleanup removes exactly that), never in $HOME (20 GB quota).
 export GEORC_ROOT="${GEORC_ROOT:-$HOME/scratch/georc}"
 export GEORC_CODE="$GEORC_ROOT/code"
 export GEORC_VENV="$GEORC_ROOT/venv"
@@ -28,7 +25,7 @@ export CUDA_CACHE_PATH="$GEORC_ROOT/cache/nv"
 export TMPDIR="$GEORC_ROOT/tmp"
 export FLASHINFER_WORKSPACE_BASE="$GEORC_ROOT/cache"  # else ~/.cache/flashinfer
 export TILELANG_CACHE_DIR="$GEORC_ROOT/cache/tilelang" TILELANG_TMP_DIR="$GEORC_ROOT/cache/tilelang/tmp"
-# Inside a job, point HOME at scratch too, so any library that defaults to ~ stays in our footprint.
+# Inside a job, HOME on scratch too, for libraries that default to ~.
 if [ -n "${SLURM_JOB_ID:-}" ]; then
   export HOME="$GEORC_ROOT/home"
   mkdir -p "$HOME"

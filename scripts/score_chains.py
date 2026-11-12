@@ -1,12 +1,4 @@
-"""Score chain sets against the expert chains with the vLLM judge (run on PACE).
-
-  score_chains.py --data D --out O --released qwen gemma3_12b      # released chain sets
-  score_chains.py --data D --out O --dirs G0/seed0=out/chains/G0/seed0   # generated chains
-
-Writes O/scores/<name>__<variant>_s<seed>[_greedy]/{pairs.csv,rounds.csv,summary.json}. Judge
-replies are cached in O/judge_cache/, so a preempted job resubmitted with the same arguments
-only pays for the calls it had not finished.
-"""
+"""Score released (--released) or generated (--dirs) chain sets with the vLLM judge (PACE)."""
 
 import argparse
 import json
@@ -30,14 +22,14 @@ def main() -> None:
     parser.add_argument("--pilot", action="store_true", help="first 20 challenges only")
     args = parser.parse_args()
 
-    from georc.vllm_backend import VLLMJudge  # import late: vllm exists only on PACE
+    from georc.vllm_backend import VLLMJudge  # vllm exists only on PACE
 
     rounds = load_rounds(args.data)
     pairs = load_pairs(args.data, rounds)
     if args.pilot:
         rounds = pilot_rounds(rounds)
         pairs = restrict_pairs(pairs, rounds)
-    # The cache depends only on judge settings, so pilot and full runs share replies.
+    # One cache per judge setting (not per run), so pilot and full runs share replies.
     judge_tag = f"{args.variant}_s{args.seed}{'_greedy' if args.greedy else ''}"
     tag = judge_tag + ("_pilot" if args.pilot else "")
     judge = CachedJudge(

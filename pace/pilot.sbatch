@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1 --ntasks=1 --cpus-per-task=8 --mem=96G
 #SBATCH --time=2:00:00
-# Pilot in one job: generate seed-0 pilot chains for each condition (default G0 G0R A1), then
-# judge-score them all in one scorer run. An optional leading --variant paper|repo picks the
-# judge rubric (default paper), e.g.
+# Pilot: seed-0 pilot chains for each condition (default G0 G0R A1), then one scoring run.
+# An optional leading --variant paper|repo picks the judge rubric (default paper), e.g.
 #   submit.sh pilot.sbatch --variant repo G0 A1
 set -euo pipefail
 source "$HOME/scratch/georc/code/pace/common.sh"

@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# Submit a GeoRC job on PACE (run on the login node, or from the laptop via `ssh pace`).
-#   submit.sh preflight.sbatch
+# Submit a job on PACE and print its id; --after JOBID runs it only if JOBID succeeds.
 #   submit.sh --after 123 score.sbatch --released qwen gemma3_12b
-# Always free tier: account gts-awu36 with QoS embers; jobs are named georc-<script>.
-# --after JOBID starts the job only if JOBID succeeds, and cancels it if JOBID fails.
-# Prints the job id.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 DEPENDENCY=()

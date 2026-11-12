@@ -1,11 +1,4 @@
-"""Generate chains for one condition and one or more seeds (run on PACE).
-
-  generate_chains.py --data D --out O --condition G0 --seeds 0 1 2
-  generate_chains.py --data D --out O --condition G0 --seeds 0 --pilot          # 100 images
-  generate_chains.py --data D --out O --condition G0 --seeds 0 --pilot --dry-run
-
-Chains go to O/chains/<condition>/seed<k>/<round>.txt; existing chains are never regenerated.
-"""
+"""Generate chains for one condition and one or more seeds (PACE); existing chains are kept."""
 
 import argparse
 from pathlib import Path

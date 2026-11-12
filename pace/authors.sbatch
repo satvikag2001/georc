@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1 --ntasks=1 --cpus-per-task=8 --mem=64G
 #SBATCH --time=2:00:00
-# Score the released chain sets with the GeoRC authors' own scorer (patched clone made by
-# pace/fetch_authors.sh); arguments go straight to scripts/authors_score.py, e.g.
+# The authors' own scorer on the released chains; arguments go to scripts/authors_score.py, e.g.
 #   submit.sh authors.sbatch --tags qwen3 --shard 1/2
-# Resumable: finished units are kept, and after 105 minutes no new unit starts and the job
-# exits 0, so `submit.sh --after JOBID authors.sbatch ...` continues where JOBID stopped.
+# Exits 0 at its time budget, so `submit.sh --after JOBID authors.sbatch ...` continues the work.
 set -euo pipefail
 source "$HOME/scratch/georc/code/pace/common.sh"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1

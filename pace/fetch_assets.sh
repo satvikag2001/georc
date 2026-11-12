@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Download the dataset and pinned model weights on the PACE login node; compute nodes have no
-# internet, so jobs run with HF_HUB_OFFLINE=1 against this cache ($HF_HOME on scratch).
+# Login node: download the dataset and pinned models; compute nodes have no internet.
 #   fetch_assets.sh                 # everything
 #   fetch_assets.sh dataset judge   # a subset: dataset | qwen-vl | judge | gemma
 set -euo pipefail

@@ -1,21 +1,4 @@
-"""Run the GeoRC authors' own released scorer on the released chain sets (PACE).
-
-  authors_score.py --authors A --data D --out O [--tags qwen3] [--shard 1/2]
-  authors_score.py --data D --out O --status       # progress and summaries; no GPU, no torch
-
-The scoring is their code: EvaluationPipeline and BipartiteLLMScorer from score.py at commit
-a7a1679 plus patches/authors_a7a1679.patch (cloned by pace/fetch_authors.sh), with the judge
-loaded by their get_processor_and_model("qwen_llm"). This script only lays the dataset out the
-way their code expects (georc.authors.build_view), loads the judge once, records every raw judge
-reply, and checkpoints. Their scorer makes one generate() call per point, about 77,000 for the
-five released sets, so the work is split into units of five pairs. Each unit is written as soon
-as it is done and skipped on resubmission. After --budget-minutes no new unit starts and the job
-exits 0, so jobs can be chained with submit.sh --after.
-
-Writes O/<run>/units/<tag>/<expert>/<challenge>.json (their per-pair records plus raw replies)
-and, once every unit of a tag is done, O/<run>/<tag>/{pairs.json,summary.json}; <run> is
-<dtype>_s<seed>, or "fake" with --fake-judge.
-"""
+"""Run the authors' patched score.py (a7a1679) on the released chains in resumable units (PACE)."""
 
 import argparse
 import json
@@ -26,7 +9,7 @@ import zlib
 from pathlib import Path
 
 from georc import authors
-from georc.data import RELEASED_TAGS
+from georc.data import RELEASED_TAGS, chain_prefix
 from georc.models import JUDGE
 
 
@@ -55,13 +38,13 @@ class Recorder:
             self.pairs.append(self._calls)
             return result
 
-        # _get_llm_score imports text_to_text from the module at call time, so this is seen.
+        # _get_llm_score looks text_to_text up on the module at call time, so it sees this.
         hf_module.text_to_text = recorded_text_to_text
         scorer._get_llm_score, scorer.score = recorded_get_score, recorded_score
 
 
 def fake_text_to_text(prompt, model, tokenizer):
-    """Stand-in judge for --fake-judge: a fixed pseudo-random score per prompt."""
+    """--fake-judge: a fixed pseudo-random score per prompt."""
     return json.dumps({"precision": zlib.crc32(prompt.encode()) % 101})
 
 
@@ -111,7 +94,7 @@ def score_unit(unit: authors.Unit, args, run_dir: Path, their_score, scorer, rec
     recorder.pairs = []
     pipeline = their_score.EvaluationPipeline(scorer, output_path=None)
     start = time.monotonic()
-    pipeline.run(str(view), authors.candidate_pattern(unit.tag))
+    pipeline.run(str(view), chain_prefix(unit.tag))
     if len(pipeline.results) != authors.ROUNDS or len(recorder.pairs) != authors.ROUNDS:
         raise RuntimeError(f"{unit}: {len(pipeline.results)} results, expected {authors.ROUNDS}")
     record = {
@@ -149,10 +132,6 @@ def write_summaries(args, run_dir: Path) -> None:
         )
 
 
-def vars_json(args) -> dict:
-    return {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--authors", type=Path, help="patched clone (pace/fetch_authors.sh)")
@@ -160,7 +139,12 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--tags", nargs="+", choices=RELEASED_TAGS, default=list(authors.TAGS))
     parser.add_argument("--shard", default="1/1", help="i/n: every n-th unit, from the i-th")
-    parser.add_argument("--budget-minutes", type=float, default=105)
+    parser.add_argument(
+        "--budget-minutes",
+        type=float,
+        default=105,
+        help="start no new unit after this; exit 0 so submit.sh --after can continue",
+    )
     parser.add_argument("--limit", type=int, help="score at most this many units (smoke test)")
     parser.add_argument("--cache-dir", help="HF hub cache passed to their loader")
     parser.add_argument(
@@ -173,7 +157,7 @@ def main() -> None:
     parser.add_argument("--score-key", choices=authors.SCORE_KEYS, default="fallback")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--fake-judge", action="store_true", help="no model; fixed fake replies")
-    parser.add_argument("--status", action="store_true")
+    parser.add_argument("--status", action="store_true", help="progress and summaries only")
     args = parser.parse_args()
     started = time.monotonic()
 
@@ -188,7 +172,7 @@ def main() -> None:
             parser.error("--authors is required to score")
         their_score, scorer, recorder, info = load_authors(args)
         job = os.environ.get("SLURM_JOB_ID", f"pid{os.getpid()}")
-        authors.write_json(run_dir / f"run_{job}.json", {**vars_json(args), **info})
+        authors.write_json(run_dir / f"run_{job}.json", {**vars(args), **info})
         for i, unit in enumerate(todo):
             if time.monotonic() - started > 60 * args.budget_minutes:
                 print(f"budget reached; {len(todo) - i} units left: resubmit", flush=True)

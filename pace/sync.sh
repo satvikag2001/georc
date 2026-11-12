@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Push local code to PACE (run on the laptop). Code only: outputs live outside $GEORC_ROOT/code,
-# so --delete here can never touch results produced on the cluster.
+# Push local code to PACE. Outputs live outside $GEORC_ROOT/code, so --delete cannot touch them.
 set -euo pipefail
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REMOTE_HOST="${REMOTE_HOST:-pace}"

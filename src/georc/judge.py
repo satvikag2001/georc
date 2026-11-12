@@ -1,4 +1,4 @@
-"""Judge prompts, reply parsing and judge backends for GeoRC one-to-all scoring."""
+"""Judge prompts, reply parsing and the judge reply cache for GeoRC one-to-all scoring."""
 
 import hashlib
 import json
@@ -9,8 +9,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Protocol
 
-# "paper": the rubric printed in GeoRC Fig. 14 (default; the paper wins over the code).
-# "repo": the rubric in the released score.py, extracted verbatim; fallback for gate G1.
+# "paper": the GeoRC Fig. 14 rubric (default); "repo": the released score.py rubric (G1 fallback).
 PROMPT_VARIANTS = {"paper": "judge_paper.txt", "repo": "judge_repo.txt"}
 
 _JSON_OBJECT = re.compile(r"\{.*?\}", re.DOTALL)
@@ -29,10 +28,10 @@ def build_prompt(first_chain: str, second_point: str, variant: str = "paper") ->
 
 
 def parse_score(reply: str) -> float | None:
-    """First number inside the first {...} of a judge reply, clipped to 0-100.
+    """First number inside the first {...} of a reply, clipped to 0-100; None if there is none.
 
     Deviation from the released code, which read the key "precision" or "recall" and so scored
-    every recall call 0 (both rubrics show only a "precision" example). None means unparseable.
+    every recall call 0 (both rubrics show only a "precision" example).
     """
     obj = _JSON_OBJECT.search(reply)
     if obj is None:
@@ -44,13 +43,11 @@ def parse_score(reply: str) -> float | None:
 
 
 class Judge(Protocol):
-    def complete(self, prompts: Sequence[str]) -> list[str]:
-        """Raw replies, one per prompt, in order."""
-        ...
+    def complete(self, prompts: Sequence[str]) -> list[str]: ...
 
 
 class FunctionJudge:
-    """A judge backed by a plain function; for tests and dry runs."""
+    """A judge backed by a plain function (tests)."""
 
     def __init__(self, reply: Callable[[str], str]) -> None:
         self._reply = reply
@@ -60,11 +57,10 @@ class FunctionJudge:
 
 
 class CachedJudge:
-    """Wraps a judge with an append-only JSONL cache keyed by prompt hash.
+    """Wraps a judge with an append-only JSONL cache keyed by sha256 of the prompt.
 
-    Uncached prompts are sent in chunks and each finished chunk is written before the next one
-    starts, so a preempted job loses at most one chunk. Use one cache file per judge model,
-    rubric variant and sampling seed.
+    The key is the prompt alone, so use one cache file per judge model, rubric and seed. Uncached
+    prompts go out in chunks, each saved before the next, so a preempted job loses one chunk.
     """
 
     def __init__(self, inner: Judge, path: Path, chunk_size: int = 2000) -> None:
@@ -77,18 +73,14 @@ class CachedJudge:
                 record = json.loads(line)
                 self._replies[record["key"]] = record["reply"]
 
-    @staticmethod
-    def _key(prompt: str) -> str:
-        return hashlib.sha256(prompt.encode()).hexdigest()
-
     def complete(self, prompts: Sequence[str]) -> list[str]:
-        keys = [self._key(p) for p in prompts]
-        todo = list({k: p for k, p in zip(keys, prompts, strict=True) if k not in self._replies})
-        prompt_by_key = dict(zip(keys, prompts, strict=True))
+        keys = [hashlib.sha256(p.encode()).hexdigest() for p in prompts]
+        todo = {k: p for k, p in zip(keys, prompts, strict=True) if k not in self._replies}
+        todo_keys = list(todo)
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        for start in range(0, len(todo), self._chunk_size):
-            chunk = todo[start : start + self._chunk_size]
-            replies = self._inner.complete([prompt_by_key[k] for k in chunk])
+        for start in range(0, len(todo_keys), self._chunk_size):
+            chunk = todo_keys[start : start + self._chunk_size]
+            replies = self._inner.complete([todo[k] for k in chunk])
             with self._path.open("a") as f:
                 for key, reply in zip(chunk, replies, strict=True):
                     f.write(json.dumps({"key": key, "reply": reply}) + "\n")

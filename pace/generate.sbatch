@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --nodes=1 --ntasks=1 --cpus-per-task=8 --mem=96G
 #SBATCH --time=2:00:00
-# Generate chains; arguments go straight to scripts/generate_chains.py, e.g.
+# Generate chains; arguments go to scripts/generate_chains.py, e.g.
 #   submit.sh generate.sbatch --condition G0 --seeds 0 --pilot
 set -euo pipefail
 source "$HOME/scratch/georc/code/pace/common.sh"

@@ -1,8 +1,4 @@
-"""Turn score summaries pulled from PACE into result tables and gate verdicts.
-
-bash pace/pull.sh && report.py --validation runs/georc/scores   # gate G1 on released chains
-report.py --authors runs/georc/authors/float32_s0                 # the authors' own scorer
-"""
+"""Print gate G1 tables and verdicts from score summaries pulled from PACE (pace/pull.sh)."""
 
 import argparse
 from pathlib import Path
@@ -12,7 +8,7 @@ from georc.evaluate import load_summaries, write_rows
 from georc.gates import OPEN_MODELS, TABLE2, check_country, check_f1, validation_rows
 
 
-def report_validation(scores: Path, tag: str, noise_tag: str, out: Path) -> bool:
+def report_validation(scores: Path, tag: str, noise_tag: str, out: Path) -> None:
     summaries = load_summaries(scores, tag)
     rows = validation_rows(summaries)
     write_rows(out, rows)
@@ -50,16 +46,13 @@ def report_validation(scores: Path, tag: str, noise_tag: str, out: Path) -> bool
     for key, passed in verdicts.items():
         print(f"G1 with {key}: {'PASS' if passed else 'FAIL'}")
     print(f"(table written to {out})")
-    return any(verdicts.values())
 
 
 def report_authors(run_dir: Path) -> None:
-    """The authors' own scorer on the released chains (pace/authors.sbatch) next to Table 2 of
-    arXiv v2 and v1 (v1 = their repo's leaderboard). Works on partial runs: n counts pairs so far.
+    """The authors' scorer next to Table 2 of arXiv v2 and v1; partial runs are fine.
 
-    Second table: their F1 recomputed from the saved replies under each way of reading a reply
-    (fallback/precision/released: GEORC_SCORE_KEY; first_number: our scorer), and their F1 against
-    Human_Expert_3 only, the other reading of the Human_Chain_3.txt their code expects.
+    Second table: their F1 recomputed from the saved replies under each reading, and against
+    Human_Expert_3 only (the other reading of the Human_Chain_3.txt their code expects).
     """
     heads = ("their code P/R/F1", "Table 2 v2", "Table 2 v1")
     print(f"{'model':14s} {'n':>4s} " + " ".join(f"{h:>20s}" for h in heads))

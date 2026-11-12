@@ -1,9 +1,4 @@
-"""Generate reasoning chains for a condition with vLLM (PACE only), resumably.
-
-Each chain is written as <out>/chains/<condition>/seed<k>/<round key>.txt with a .json beside it
-holding token counts, finish reason and batch timing. A chain file appears only once complete
-(write to .tmp, then rename), so a job preempted mid-batch is simply resubmitted.
-"""
+"""Generate reasoning chains for a condition with vLLM (PACE only), resumably."""
 
 import json
 import os
@@ -15,8 +10,7 @@ from PIL import Image
 from georc.conditions import Condition
 from georc.data import Pair, Round
 from georc.judge import load_template
-
-PILOT_CHALLENGES = 20
+from georc.models import GENERATORS
 
 
 def chain_path(out: Path, condition_id: str, seed: int, rnd: Round) -> Path:
@@ -24,8 +18,8 @@ def chain_path(out: Path, condition_id: str, seed: int, rnd: Round) -> Path:
 
 
 def pilot_rounds(rounds: list[Round]) -> list[Round]:
-    """Rounds of the first PILOT_CHALLENGES challenges in name order (100 images)."""
-    names = sorted({r.challenge for r in rounds})[:PILOT_CHALLENGES]
+    """Rounds of the first 20 challenges in name order (100 images)."""
+    names = sorted({r.challenge for r in rounds})[:20]
     return [r for r in rounds if r.challenge in names]
 
 
@@ -59,13 +53,9 @@ def build_messages(prompt_template: str, image: Image.Image) -> list[dict]:
     ]
 
 
-def generate(
-    condition: Condition, rounds: list[Round], out: Path, seed: int, batch_size: int = 32
-) -> int:
+def generate(condition: Condition, rounds: list[Round], out: Path, seed: int) -> int:
     """Generate every missing chain for one seed; returns how many were written."""
-    from vllm import LLM  # import late: vllm exists only on PACE
-
-    from georc.models import GENERATORS
+    from vllm import LLM  # vllm exists only on PACE
 
     todo = pending_rounds(rounds, out, condition.id, seed)
     if not todo:
@@ -77,7 +67,7 @@ def generate(
         dtype="bfloat16",
         max_model_len=spec.max_tokens + 8192,
         gpu_memory_utilization=0.85,
-        limit_mm_per_prompt={"image": 9},
+        limit_mm_per_prompt={"image": 9},  # A2: full view plus 8 tiles
         seed=seed,
     )
     params = llm.get_default_sampling_params()
@@ -87,6 +77,7 @@ def generate(
     params.seed = seed
     extra = {"mm_processor_kwargs": condition.mm_kwargs} if condition.mm_kwargs else {}
 
+    batch_size = 32
     for start in range(0, len(todo), batch_size):
         batch = todo[start : start + batch_size]
         conversations = [

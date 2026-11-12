@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Copy scores, logs, generated chains and cached judge replies from PACE into runs/georc/ on the laptop (gitignored).
-# Read-only on PACE.
+# Copy scores, logs, chains, judge cache and authors' scorer runs from PACE into runs/georc/.
 set -euo pipefail
 LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REMOTE_HOST="${REMOTE_HOST:-pace}"
@@ -9,8 +8,7 @@ export RSYNC_RSH="ssh -o ControlMaster=no -o ControlPath=none -o ConnectTimeout=
 mkdir -p "$LOCAL/runs/georc"
 rsync -az "$REMOTE_HOST:scratch/georc/out/scores" "$REMOTE_HOST:scratch/georc/logs" \
   "$LOCAL/runs/georc/"
-# No chains exist before the first generation job; out/ itself exists once scores do.
-# authors/ holds the authors' scorer results (pace/authors.sbatch); its views/ are only symlinks.
+# These may not exist yet; views/ holds only symlinks.
 rsync -az --ignore-missing-args --exclude views/ "$REMOTE_HOST:scratch/georc/out/chains" \
   "$REMOTE_HOST:scratch/georc/out/judge_cache" "$REMOTE_HOST:scratch/georc/out/authors" \
   "$LOCAL/runs/georc/"

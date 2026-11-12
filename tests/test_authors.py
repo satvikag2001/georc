@@ -1,6 +1,4 @@
-"""The harness around the authors' released scorer: dataset views, reply readings, summaries,
-and the patch. Tests that need the authors' source run only when GEORC_AUTHORS_REPO points at a
-git clone of github.com/talrejamohit03/GeoRC (their code is not vendored here)."""
+"""The harness around the authors' scorer; set GEORC_AUTHORS_REPO to a clone to run them all."""
 
 import json
 import os
@@ -12,10 +10,11 @@ from pathlib import Path
 import pytest
 
 from georc import authors
-from georc.data import Round, released_chain_path
+from georc.data import chain_prefix
 from georc.judge import parse_score
 
 REPO = Path(__file__).resolve().parents[1]
+AUTHORS_COMMIT = "a7a167979b3b355c29d59d36e3bff66c79f6a530"
 PATCH = REPO / "patches" / "authors_a7a1679.patch"
 AUTHORS_REPO = os.environ.get("GEORC_AUTHORS_REPO")
 needs_source = pytest.mark.skipif(
@@ -27,7 +26,6 @@ ROUND_TEXT = (
 
 
 def make_dataset(root: Path, experts: dict[str, list[str]], tags=("qwen", "hallucinated")) -> Path:
-    """Challenges with five rounds, the given experts, and five chains per tag."""
     for challenge, names in experts.items():
         folder = root / challenge
         folder.mkdir(parents=True)
@@ -38,15 +36,8 @@ def make_dataset(root: Path, experts: dict[str, list[str]], tags=("qwen", "hallu
         for tag in tags:
             for i in range(1, 6):
                 chain = f"1. Cyrillic script on signs\n2. {tag} white bollards round {i}\n"
-                (folder / f"{authors.candidate_pattern(tag)}{i}.txt").write_text(chain)
+                (folder / f"{chain_prefix(tag)}{i}.txt").write_text(chain)
     return root
-
-
-def test_candidate_pattern_matches_the_released_file_names(tmp_path):
-    rnd = Round(challenge="abc", index=3, country="kg", image=tmp_path / "abc_3.png")
-    for tag in authors.TAGS:
-        name = released_chain_path(tmp_path, rnd, tag).name
-        assert name == f"{authors.candidate_pattern(tag)}3.txt"
 
 
 def test_units_cover_every_expert_of_every_challenge_and_shards_partition_them(tmp_path):
@@ -72,7 +63,7 @@ def test_view_links_the_expert_as_human_chain_3_and_can_be_rebuilt(tmp_path):
     data = make_dataset(tmp_path / "data", {"a": ["Human_Expert_2"]})
     unit = authors.Unit("hallucinated", "Human_Expert_2", "a")
     root = authors.build_view(data, tmp_path / "views", unit)
-    assert authors.build_view(data, tmp_path / "views", unit) == root  # idempotent
+    assert authors.build_view(data, tmp_path / "views", unit) == root
     folder = root / "a"
     assert [p.name for p in root.iterdir()] == ["a"]  # their pipeline lists challenge folders
     assert (folder / "Human_Chain_3.txt").resolve() == (data / "a" / "Human_Expert_2.txt").resolve()
@@ -196,7 +187,7 @@ def patched_clone(tmp_path: Path) -> Path:
     dest = tmp_path / "GeoRC"
     subprocess.run(["git", "clone", "-q", AUTHORS_REPO, str(dest)], check=True)
     git = ["git", "-C", str(dest)]
-    subprocess.run([*git, "checkout", "-q", "--detach", authors.AUTHORS_COMMIT], check=True)
+    subprocess.run([*git, "checkout", "-q", "--detach", AUTHORS_COMMIT], check=True)
     subprocess.run([*git, "apply", "--check", str(PATCH)], check=True)
     subprocess.run([*git, "apply", str(PATCH)], check=True)
     return dest
@@ -208,8 +199,7 @@ def test_patch_applies_cleanly_to_a7a1679(tmp_path):
     assert (dest / "src" / "vllm" / "vllm_completion_util.py").exists()
 
 
-STUBS = {
-    # Their modules import these at load time; the stub judge never touches them.
+STUBS = {  # imported by their modules at load time; never used with the fake judge
     "torch/__init__.py": "",
     "transformers/__init__.py": "def __getattr__(name):\n    return type(name, (), {})\n",
     "PIL/__init__.py": "",
@@ -245,7 +235,6 @@ def test_their_scorer_runs_end_to_end_with_a_stub_judge(tmp_path):
     rows = authors.load_pairs(run_dir, authors.completed_units(run_dir, "qwen"))
     assert len(rows) == 15
     for row in rows:
-        # their numbers, recomputed from the recorded replies, agree exactly
         expected = authors.pair_metrics(row["calls"], "fallback")
         assert {k: row[k] for k in expected} == pytest.approx(expected)
         metrics = [c["metric"] for c in row["calls"]]

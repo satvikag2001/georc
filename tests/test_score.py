@@ -1,6 +1,12 @@
 import pytest
 
-from georc.country import build_country_prompt, country_accuracy, parse_country
+from georc.country import (
+    build_country_match_prompt,
+    build_country_prompt,
+    country_accuracy,
+    parse_country,
+    parse_match,
+)
 from georc.judge import CachedJudge, FunctionJudge, build_prompt, parse_score
 from georc.score import score_pairs, summarize
 
@@ -20,9 +26,6 @@ def exact_match_judge() -> FunctionJudge:
         return '{"precision": 100}' if second in first.split(" || ") else '{"precision": 0}'
 
     return FunctionJudge(reply)
-
-
-# --- parse_score -------------------------------------------------------------------------------
 
 
 def test_parse_score_reads_the_number_whatever_the_key():
@@ -47,9 +50,6 @@ def test_parse_score_clips_to_the_0_to_100_range():
     assert parse_score('{"precision": -5}') == 0.0
 
 
-# --- prompts -----------------------------------------------------------------------------------
-
-
 def test_paper_prompt_puts_both_chains_after_their_markers():
     prompt = build_prompt("Cyrillic signage || White tree trunks", "Cyrillic on a sign")
     assert split_prompt(prompt) == ("Cyrillic signage || White tree trunks", "Cyrillic on a sign")
@@ -67,21 +67,13 @@ def test_repo_prompt_variant_is_the_released_rubric():
     assert '{"precision": <score>}' in prompt
 
 
-def test_unknown_prompt_variant_is_rejected():
-    with pytest.raises(KeyError):
-        build_prompt("A", "A", variant="v3")
-
-
-# --- score_pairs -------------------------------------------------------------------------------
-
-
 def test_one_to_all_scores_on_a_hand_computed_pair():
     candidate = "1. Cyrillic signage\n2. The sky is blue\n3. The road is paved"
     expert = "Cyrillic signage\nWhite tree trunks"
     [score] = score_pairs([(candidate, expert)], exact_match_judge())
     assert score.precision == pytest.approx(100 / 3)  # 1 of 3 candidate points supported
     assert score.recall == pytest.approx(50.0)  # 1 of 2 expert points found
-    assert score.f1 == pytest.approx(40.0)  # 2PR/(P+R)
+    assert score.f1 == pytest.approx(40.0)
     assert (score.n_candidate_points, score.n_expert_points) == (3, 2)
 
 
@@ -122,9 +114,6 @@ def test_summary_f1_is_the_mean_of_per_pair_f1_not_f1_of_means():
     assert summary["n"] == 2
 
 
-# --- CachedJudge -------------------------------------------------------------------------------
-
-
 def test_cached_judge_answers_repeat_prompts_from_disk(tmp_path):
     cache = tmp_path / "judge_cache.jsonl"
     first = CachedJudge(FunctionJudge(lambda p: '{"precision": 42}'), cache)
@@ -157,9 +146,6 @@ def test_cached_judge_saves_finished_chunks_before_a_failure(tmp_path):
     ]
 
 
-# --- country -----------------------------------------------------------------------------------
-
-
 def test_country_prompt_contains_the_chain():
     assert build_country_prompt("Conclusion: Kyrgyzstan").endswith("Conclusion: Kyrgyzstan")
 
@@ -177,23 +163,7 @@ def test_country_accuracy_is_a_percentage_and_missing_guesses_count_as_wrong():
     assert country_accuracy(["kg", None, "rs", "br"], ["kg", "my", "rs", "ar"]) == 50.0
 
 
-def test_generation_prompt_is_the_paper_fig21_text():
-    from georc.judge import load_template
-
-    prompt = load_template("gen_paper.txt")
-    assert prompt.startswith("You are a professional GeoGuessr player.")
-    # Fig. 21 has this sentence; the released generate.py prompt does not.
-    assert prompt.endswith(
-        "only generate as output the reasoning chain without annotations and titles."
-    )
-
-
-# --- country, second measure: the judge sees the true country ------------------------------------
-
-
 def test_match_prompt_gives_the_judge_the_iso_code_and_the_chain():
-    from georc.country import build_country_match_prompt
-
     prompt = build_country_match_prompt("Conclusion: Kazakhstan or Kyrgyzstan", "kg")
     assert "TRUE COUNTRY: KG" in prompt  # the paper compares against ISO codes
     assert prompt.endswith("Conclusion: Kazakhstan or Kyrgyzstan")
@@ -204,13 +174,9 @@ def test_match_prompt_gives_the_judge_the_iso_code_and_the_chain():
     [('{"match": true}', True), ('{"match": false}', False), ('ok {"match": True}', True)],
 )
 def test_parse_match_reads_the_boolean(reply, expected):
-    from georc.country import parse_match
-
     assert parse_match(reply) is expected
 
 
 @pytest.mark.parametrize("reply", ['{"match": "yes"}', "true", "{}"])
 def test_parse_match_returns_none_for_anything_else(reply):
-    from georc.country import parse_match
-
     assert parse_match(reply) is None

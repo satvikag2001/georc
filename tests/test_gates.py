@@ -1,10 +1,13 @@
 import pytest
 
-from georc.gates import OPEN_MODELS, TABLE2, check_country, check_g1, validation_rows
+from georc.gates import OPEN_MODELS, TABLE2, check_country, check_f1, validation_rows
+
+
+def check_g1(summaries, country_key="country_acc"):
+    return check_f1(summaries) + check_country(summaries, country_key)
 
 
 def paper_like_summaries() -> dict[str, dict[str, float]]:
-    """Summaries equal to the paper's Table 2: every G1 check should pass."""
     out = {}
     for name, row in TABLE2.items():
         out[name] = {
@@ -27,7 +30,7 @@ def test_summaries_matching_the_paper_pass_every_g1_check():
 
 def test_f1_one_point_outside_the_paper_ci_still_passes_and_beyond_fails():
     summaries = paper_like_summaries()
-    summaries["qwen"]["f1"] = TABLE2["qwen"].f1_ci[1] + 1.0  # 31.15: the edge of the allowance
+    summaries["qwen"]["f1"] = TABLE2["qwen"].f1_ci[1] + 1.0  # exactly on the edge
     assert failed(check_g1(summaries)) == []
     summaries["qwen"]["f1"] = TABLE2["qwen"].f1_ci[1] + 1.01
     assert "qwen F1 within paper CI +/- 1.0" in failed(check_g1(summaries))
