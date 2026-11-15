@@ -80,7 +80,11 @@ def test_outside_a_job_home_is_left_alone(tmp_path):
 
 
 def pilot_calls(tmp_path: Path, *args: str) -> list[list[str]]:
-    """Run pace/pilot.sbatch with a stub common.sh whose python only echoes its arguments."""
+    return job_calls(tmp_path, "pilot.sbatch", *args)
+
+
+def job_calls(tmp_path: Path, script: str, *args: str) -> list[list[str]]:
+    """Run a pace/ job script with a stub common.sh whose python only echoes its arguments."""
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir(exist_ok=True)
     (fake_bin / "python").write_text('#!/usr/bin/env bash\necho "$@"\n')
@@ -92,8 +96,25 @@ def pilot_calls(tmp_path: Path, *args: str) -> list[list[str]]:
     common.write_text(f"PY={fake_bin / 'python'} GEORC_CODE=/c GEORC_DATA=/d GEORC_OUT=/o\n")
     return [
         line.split()
-        for line in run_bash(f"bash pace/pilot.sbatch {' '.join(args)}", tmp_path).splitlines()
+        for line in run_bash(f"bash pace/{script} {' '.join(args)}", tmp_path).splitlines()
     ]
+
+
+def test_extras_job_runs_judge_extras_with_its_arguments(tmp_path):
+    [call] = job_calls(tmp_path, "extras.sbatch", "--pass", "pairwise", "--sets", "qwen")
+    assert call == [
+        "/c/scripts/judge_extras.py",
+        *("--data", "/d", "--out", "/o", "--pass", "pairwise", "--sets", "qwen"),
+    ]
+    text = (REPO / "pace" / "extras.sbatch").read_text()
+    assert "#SBATCH --time=2:00:00" in text and "export HF_HUB_OFFLINE=1" in text
+
+
+def test_submit_names_the_extras_job_and_keeps_its_arguments(tmp_path):
+    args = submitted_args(tmp_path, "extras.sbatch", "--pass", "location", "--sets", "G0")
+    assert "--job-name=georc-extras" in args
+    script = next(i for i, a in enumerate(args) if a.endswith("pace/extras.sbatch"))
+    assert args[script + 1 :] == ["--pass", "location", "--sets", "G0"]
 
 
 def test_pilot_generates_each_condition_then_scores_them_all_in_one_run(tmp_path):

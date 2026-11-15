@@ -1,10 +1,14 @@
-"""vLLM-backed judge (PACE only; vllm is not installed locally)."""
+"""vLLM-backed judges (PACE only; vllm is not installed locally)."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 
-from vllm import LLM
+from PIL import Image
+from vllm import LLM, SamplingParams
 
-from georc.models import JUDGE
+from georc.extras import split_request
+from georc.generate import image_messages
+from georc.models import GENERATORS, JUDGE
 
 
 class VLLMJudge:
@@ -31,5 +35,35 @@ class VLLMJudge:
 
     def complete(self, prompts: Sequence[str]) -> list[str]:
         conversations = [[{"role": "user", "content": p}] for p in prompts]
+        outputs = self.llm.chat(conversations, self.params, use_tqdm=True)
+        return [o.outputs[0].text for o in outputs]
+
+
+class VLLMVisionJudge:
+    """Qwen2.5-VL-7B, greedy, one image per request. Requests are extras.grounded_request strings:
+    the first line is the round key, which names the image; the rest is the prompt text."""
+
+    def __init__(self, images: Mapping[str, Path], max_tokens: int) -> None:
+        spec = GENERATORS["qwen2.5-vl-7b"]
+        self.images = images
+        self.llm = LLM(
+            model=spec.repo,
+            revision=spec.revision,
+            dtype="bfloat16",
+            max_model_len=40960,  # as in the PACE preflight that passed
+            gpu_memory_utilization=0.85,
+            limit_mm_per_prompt={"image": 1},
+            seed=0,
+        )
+        # Plain greedy, without the model's default repetition penalty (1.05), which would push
+        # against repeating the same verdict line after line.
+        self.params = SamplingParams(temperature=0.0, max_tokens=max_tokens, seed=0)
+
+    def complete(self, requests: Sequence[str]) -> list[str]:
+        conversations = []
+        for request in requests:
+            key, text = split_request(request)
+            image = Image.open(self.images[key]).convert("RGB")
+            conversations.append(image_messages(text, image))
         outputs = self.llm.chat(conversations, self.params, use_tqdm=True)
         return [o.outputs[0].text for o in outputs]

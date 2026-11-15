@@ -69,6 +69,12 @@ def parse_expert_rounds(text: str) -> dict[int, str]:
     return rounds
 
 
+def expert_round_texts(text: str) -> dict[int, str]:
+    """Each round's full text from a Human_Expert_N.txt file, "Conclusion" section included."""
+    pieces = _ROUND_HEADER.split(text)
+    return {int(n): body.strip() for n, body in zip(pieces[1::2], pieces[2::2], strict=True)}
+
+
 def load_rounds(root: Path) -> list[Round]:
     """All rounds under `root`, ordered by challenge name then round index."""
     rounds = []

@@ -1,0 +1,9 @@
+Below is one statement from a reasoning chain written to guess where a street-level photo was taken. Rate from 0 to 100 how much the visual evidence cited in the statement narrows down where on Earth the photo was taken. Assume the cited evidence really is in the photo, and rate the evidence itself, using your own knowledge of where it occurs, not the conclusion the statement draws from it.
+- 0: no location information: a heading, filler, or a location claim with no visual evidence cited.
+- 25: the evidence points to a continent or a climate zone.
+- 50: the evidence points to a group of countries.
+- 75: the evidence points to one country.
+- 100: the evidence points to a region within one country.
+Use values in between when the evidence falls between these levels.
+Respond only with a JSON object, for example: {"specificity": <score>}.
+STATEMENT: {point}

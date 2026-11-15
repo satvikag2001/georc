@@ -5,6 +5,7 @@ import pytest
 
 from georc.data import (
     RELEASED_TAGS,
+    expert_round_texts,
     load_pairs,
     load_rounds,
     parse_expert_rounds,
@@ -49,6 +50,17 @@ def test_parse_expert_rounds_drops_lines_mentioning_reasoning():
 def test_parse_expert_rounds_stops_at_conclusion():
     text = "Round 1\nCyrillic signage\nConclusion\nThis is Kyrgyzstan\nTrailing line\n"
     assert extract_points(parse_expert_rounds(text)[1]) == ["Cyrillic signage"]
+
+
+def test_expert_round_texts_keep_the_conclusion_and_every_other_line():
+    text = (
+        "Round 1\nReasoning\nCyrillic signage\nConclusion\nKyrgyzstan, near Bishkek\nRound 2\nA\n"
+    )
+    rounds = expert_round_texts(text)
+    assert rounds == {
+        1: "Reasoning\nCyrillic signage\nConclusion\nKyrgyzstan, near Bishkek",
+        2: "A",
+    }
 
 
 def _write_challenge(root: Path, name: str, countries: list[str], experts: dict[str, str]) -> None:

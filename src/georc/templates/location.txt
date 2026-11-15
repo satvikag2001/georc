@@ -1,0 +1,3 @@
+Below is a reasoning chain written to guess where a photo was taken. Identify the most specific place given as the final location guess (for example a town, a province or region, or a country) and its approximate latitude and longitude in decimal degrees. If several places are offered as the final guess, use the first one named. If the guess is an area, give coordinates near its middle. If no place is guessed, use null for all three values.
+Respond only with a JSON object, for example: {"place": "Mendoza, Argentina", "lat": -32.89, "lon": -68.84} or {"place": null, "lat": null, "lon": null}.
+REASONING CHAIN: {chain}

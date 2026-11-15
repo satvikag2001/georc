@@ -42,12 +42,17 @@ def write_chain(path: Path, text: str, meta: dict) -> None:
 
 
 def build_messages(prompt_template: str, image: Image.Image) -> list[dict]:
+    return image_messages(load_template(prompt_template), image)
+
+
+def image_messages(text: str, image: Image.Image) -> list[dict]:
+    """One user message: the image, then the text."""
     return [
         {
             "role": "user",
             "content": [
                 {"type": "image_pil", "image_pil": image},
-                {"type": "text", "text": load_template(prompt_template)},
+                {"type": "text", "text": text},
             ],
         }
     ]

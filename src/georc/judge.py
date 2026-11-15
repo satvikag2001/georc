@@ -47,6 +47,11 @@ def parse_score(reply: str) -> float | None:
     return min(100.0, max(0.0, float(number.group(0))))
 
 
+def prompt_key(prompt: str) -> str:
+    """The reply cache key of a prompt."""
+    return hashlib.sha256(prompt.encode()).hexdigest()
+
+
 class Judge(Protocol):
     def complete(self, prompts: Sequence[str]) -> list[str]: ...
 
@@ -79,7 +84,7 @@ class CachedJudge:
                 self._replies[record["key"]] = record["reply"]
 
     def complete(self, prompts: Sequence[str]) -> list[str]:
-        keys = [hashlib.sha256(p.encode()).hexdigest() for p in prompts]
+        keys = [prompt_key(p) for p in prompts]
         todo = {k: p for k, p in zip(keys, prompts, strict=True) if k not in self._replies}
         todo_keys = list(todo)
         self._path.parent.mkdir(parents=True, exist_ok=True)

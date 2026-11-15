@@ -7,6 +7,7 @@ from georc.data import Pair, Round
 from georc.generate import (
     build_messages,
     chain_path,
+    image_messages,
     pending_rounds,
     pilot_rounds,
     restrict_pairs,
@@ -87,3 +88,9 @@ def test_build_messages_sends_the_image_then_the_prompt_text():
     image_part, text_part = message["content"]
     assert image_part == {"type": "image_pil", "image_pil": image}
     assert text_part == {"type": "text", "text": load_template("gen_paper.txt")}
+
+
+def test_image_messages_send_any_text_after_the_image():
+    image = Image.new("RGB", (4, 4))
+    [message] = image_messages("1. Cyrillic signage", image)
+    assert message["content"][1] == {"type": "text", "text": "1. Cyrillic signage"}

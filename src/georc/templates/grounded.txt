@@ -1,0 +1,8 @@
+Here is a street-level photo and numbered statements from a reasoning chain written to guess where it was taken. For each statement, check whether what it says about the photo can be seen in this photo:
+- yes: everything the statement says is in the photo can be seen in it.
+- no: something the statement says is in the photo cannot be seen, or the photo contradicts it.
+- na: the statement makes no claim about what is in the photo (for example a heading, a conclusion, or general knowledge about a place).
+Check only what is visible; do not judge whether the location reasoning is right.
+Answer with exactly one line per statement, in order, in the form "1: yes", "2: no" or "3: na", and nothing else.
+STATEMENTS:
+{statements}
