@@ -6,6 +6,7 @@ import pytest
 from georc.data import (
     RELEASED_TAGS,
     expert_round_texts,
+    load_coordinates,
     load_pairs,
     load_rounds,
     parse_expert_rounds,
@@ -86,6 +87,14 @@ def test_load_rounds_fails_loudly_on_a_missing_country_without_override(tmp_path
     _write_challenge(tmp_path, "abc", [None], experts={})
     with pytest.raises(ValueError, match="abc round 1"):
         load_rounds(tmp_path)
+
+
+def test_load_coordinates_reads_lat_and_lng_by_round_key(tmp_path):
+    folder = tmp_path / "abc"
+    folder.mkdir()
+    meta = [{"lat": 41.4, "lng": 74.0, "streakLocationCode": "kg"}, {"lat": -6.4, "lng": 99.7}]
+    (folder / "abc_rounds_metadata.json").write_text(json.dumps(meta))
+    assert load_coordinates(tmp_path) == {"abc_1": (41.4, 74.0), "abc_2": (-6.4, 99.7)}
 
 
 def test_load_pairs_gives_one_pair_per_expert_per_round(tmp_path):

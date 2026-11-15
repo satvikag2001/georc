@@ -18,14 +18,14 @@ class PairScore:
     n_unparsed: int
 
 
-def score_pairs(
+def point_scores(
     pairs: Sequence[tuple[str, str]], judge: Judge, variant: str = "paper"
-) -> list[PairScore]:
-    """Score (candidate chain, expert chain) pairs, sending every judge call in one batch.
+) -> list[tuple[list[float | None], list[float | None]]]:
+    """Per (candidate chain, expert chain) pair, the judge's score of each candidate point and of
+    each expert point, sending every judge call in one batch; ([], []) if a side has no points.
 
     Precision: each candidate point against the whole expert chain (points joined by " || ").
-    Recall: each expert point against the whole candidate chain. A pair with no points on either
-    side scores 0/0/0, as in the released code.
+    Recall: each expert point against the whole candidate chain.
     """
     prompts: list[str] = []
     plans: list[tuple[int, int, int] | None] = []  # (offset, n_candidate, n_expert)
@@ -43,16 +43,32 @@ def score_pairs(
     results = []
     for plan in plans:
         if plan is None:
-            results.append(PairScore(0.0, 0.0, 0.0, 0, 0, 0))
+            results.append(([], []))
             continue
         offset, n_cand, n_gt = plan
-        window = parsed[offset : offset + n_cand + n_gt]
-        scores = [0.0 if s is None else s for s in window]
-        precision, recall = fmean(scores[:n_cand]), fmean(scores[n_cand:])
-        f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0.0
-        unparsed = sum(s is None for s in window)
-        results.append(PairScore(precision, recall, f1, n_cand, n_gt, unparsed))
+        results.append(
+            (parsed[offset : offset + n_cand], parsed[offset + n_cand : offset + n_cand + n_gt])
+        )
     return results
+
+
+def pair_score(candidate: list[float | None], expert: list[float | None]) -> PairScore:
+    """P, R and F1 from point scores; unparsed scores count 0 and a pair with no points on either
+    side scores 0/0/0, as in the released code."""
+    if not candidate or not expert:
+        return PairScore(0.0, 0.0, 0.0, 0, 0, 0)
+    precision = fmean(0.0 if s is None else s for s in candidate)
+    recall = fmean(0.0 if s is None else s for s in expert)
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0.0
+    unparsed = sum(s is None for s in candidate + expert)
+    return PairScore(precision, recall, f1, len(candidate), len(expert), unparsed)
+
+
+def score_pairs(
+    pairs: Sequence[tuple[str, str]], judge: Judge, variant: str = "paper"
+) -> list[PairScore]:
+    """Score (candidate chain, expert chain) pairs, sending every judge call in one batch."""
+    return [pair_score(c, e) for c, e in point_scores(pairs, judge, variant)]
 
 
 def summarize(scores: Sequence[PairScore]) -> dict[str, float]:

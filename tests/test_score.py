@@ -8,7 +8,7 @@ from georc.country import (
     parse_match,
 )
 from georc.judge import CachedJudge, FunctionJudge, build_prompt, parse_score
-from georc.score import score_pairs, summarize
+from georc.score import pair_score, point_scores, score_pairs, summarize
 
 
 def split_prompt(prompt: str) -> tuple[str, str]:
@@ -75,6 +75,17 @@ def test_one_to_all_scores_on_a_hand_computed_pair():
     assert score.recall == pytest.approx(50.0)  # 1 of 2 expert points found
     assert score.f1 == pytest.approx(40.0)
     assert (score.n_candidate_points, score.n_expert_points) == (3, 2)
+
+
+def test_point_scores_give_each_points_score_and_pair_score_averages_them():
+    candidate = "1. Cyrillic signage\n2. The sky is blue"
+    [(cand, gt)] = point_scores(
+        [(candidate, "Cyrillic signage\nWhite tree trunks")], exact_match_judge()
+    )
+    assert (cand, gt) == ([100.0, 0.0], [100.0, 0.0])
+    score = pair_score([100.0, None], [100.0, 0.0])  # unparsed counts 0
+    assert (score.precision, score.recall, score.f1, score.n_unparsed) == (50.0, 50.0, 50.0, 1)
+    assert point_scores([("", "Cyrillic signage")], exact_match_judge()) == [([], [])]
 
 
 def test_empty_candidate_scores_zero_without_calling_the_judge():

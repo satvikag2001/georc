@@ -1,8 +1,9 @@
 import random
+from statistics import median
 
 import pytest
 
-from georc.stats import compare, paired_bootstrap, win
+from georc.stats import bootstrap_difference, compare, paired_bootstrap, win
 
 
 def planted(effect: float, images: int = 300) -> dict[str, list[float]]:
@@ -67,3 +68,16 @@ def test_compare_refuses_rows_that_do_not_line_up():
     base = [{"round": "a_1", "expert": "E1", "f1": "1"}]
     with pytest.raises(ValueError, match="same"):
         compare(base, [{"round": "a_2", "expert": "E1", "f1": "1"}], "f1", ("round", "expert"))
+
+
+def test_bootstrap_difference_resamples_shared_clusters_for_both_sides():
+    a = {"r1": [1.0, 3.0], "r2": [5.0]}
+    b = {"r1": [0.0], "r2": [0.0], "r3": [9.0]}  # r3 is not in a, so it is left out
+    point, low, high = bootstrap_difference(a, b)
+    # Means of a over resampled rounds: r1 r1 -> 2, mixed -> 3, r2 r2 -> 5; b is always 0.
+    assert (point, low, high) == (3.0, 2.0, 5.0)
+
+
+def test_bootstrap_difference_takes_any_statistic():
+    a = {"r1": [1.0, 2.0, 100.0]}
+    assert bootstrap_difference(a, {"r1": [0.0]}, median) == (2.0, 2.0, 2.0)

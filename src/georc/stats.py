@@ -1,6 +1,8 @@
 """Paired cluster bootstrap over images, and the win rule (SPEC.md, Success criteria)."""
 
 import random
+from collections.abc import Callable
+from statistics import fmean
 
 
 def compare(
@@ -30,6 +32,26 @@ def paired_bootstrap(
     means.sort()
     mean = sum(total for total, _ in clusters) / sum(count for _, count in clusters)
     return mean, means[int(0.025 * resamples)], means[int(0.975 * resamples) - 1]
+
+
+def bootstrap_difference(
+    a: dict[str, list[float]],
+    b: dict[str, list[float]],
+    statistic: Callable[[list[float]], float] = fmean,
+    resamples: int = 2000,
+    seed: int = 0,
+) -> tuple[float, float, float]:
+    """statistic(a) - statistic(b) over the clusters both cover, and its 95% percentile interval,
+    resampling whole clusters with the same draw for both sides."""
+    clusters = sorted(a.keys() & b.keys())
+
+    def difference(draw: list[str]) -> float:
+        pooled_a, pooled_b = ([x for c in draw for x in side[c]] for side in (a, b))
+        return statistic(pooled_a) - statistic(pooled_b)
+
+    rng = random.Random(seed)
+    diffs = sorted(difference(rng.choices(clusters, k=len(clusters))) for _ in range(resamples))
+    return difference(clusters), diffs[int(0.025 * resamples)], diffs[int(0.975 * resamples) - 1]
 
 
 def win(f1_low: float, country_low: float) -> bool:

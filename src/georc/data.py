@@ -90,6 +90,16 @@ def load_rounds(root: Path) -> list[Round]:
     return rounds
 
 
+def load_coordinates(root: Path) -> dict[str, tuple[float, float]]:
+    """True (lat, lng) of every round under `root`, by round key."""
+    coordinates = {}
+    for meta in sorted(root.glob("*/*_rounds_metadata.json")):
+        challenge = meta.parent.name
+        for i, entry in enumerate(json.loads(meta.read_text()), start=1):
+            coordinates[f"{challenge}_{i}"] = (entry["lat"], entry["lng"])
+    return coordinates
+
+
 def load_pairs(root: Path, rounds: list[Round]) -> list[Pair]:
     """One pair per (round, expert who wrote a chain for it), ordered by round then expert."""
     experts: dict[str, dict[str, dict[int, str]]] = {}

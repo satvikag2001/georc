@@ -101,11 +101,15 @@ def cache_path(out: Path, pass_name: str, set_name: str) -> Path:
     return Path(out) / "judge_cache" / "extras" / f"{pass_name}__{set_name}.jsonl"
 
 
+class CacheMiss(LookupError):
+    pass
+
+
 class CacheOnly:
     """Inner judge for re-reading a pulled cache: any prompt that reaches it was never judged."""
 
     def complete(self, prompts: Sequence[str]) -> list[str]:
-        raise LookupError(f"{len(prompts)} prompts are not in the judge cache")
+        raise CacheMiss(f"{len(prompts)} prompts are not in the judge cache")
 
 
 def call_counts(prompts: Sequence[str], cache: Path) -> dict[str, int]:
