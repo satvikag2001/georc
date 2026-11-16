@@ -67,6 +67,16 @@ def test_repo_prompt_variant_is_the_released_rubric():
     assert '{"precision": <score>}' in prompt
 
 
+def test_repo_newlines_variant_only_moves_each_chain_onto_its_own_line():
+    released = build_prompt("A || B", "A", variant="repo")
+    newlines = build_prompt("A || B", "A", variant="repo_newlines")
+    tail = "FIRST REASONING CHAIN:"
+    assert released.split(tail)[0] == newlines.split(tail)[0]  # rubric and indentation unchanged
+    assert newlines.endswith(
+        "FIRST REASONING CHAIN:\n        A || B\n        SECOND REASONING CHAIN:\n        A"
+    )
+
+
 def test_one_to_all_scores_on_a_hand_computed_pair():
     candidate = "1. Cyrillic signage\n2. The sky is blue\n3. The road is paved"
     expert = "Cyrillic signage\nWhite tree trunks"

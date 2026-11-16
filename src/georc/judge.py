@@ -10,11 +10,13 @@ from pathlib import Path
 from typing import Protocol
 
 # "paper": the GeoRC Fig. 14 rubric (default); "repo": the released score.py rubric (G1 fallback);
-# "paper_layout": Fig. 14's words in the released f-string's layout (formatting sensitivity check).
+# "paper_layout": Fig. 14's words in the released f-string's layout (formatting sensitivity check);
+# "repo_newlines": the released rubric with each chain on its own line (layout check).
 PROMPT_VARIANTS = {
     "paper": "judge_paper.txt",
     "repo": "judge_repo.txt",
     "paper_layout": "judge_paper_layout.txt",
+    "repo_newlines": "judge_repo_newlines.txt",
 }
 
 _JSON_OBJECT = re.compile(r"\{.*?\}", re.DOTALL)
