@@ -37,7 +37,7 @@ def point_scores(
         plans.append((len(prompts), len(cand_points), len(gt_points)))
         gt_chain, cand_chain = " || ".join(gt_points), " || ".join(cand_points)
         prompts += [build_prompt(gt_chain, p, variant) for p in cand_points]
-        prompts += [build_prompt(cand_chain, g, variant) for g in gt_points]
+        prompts += [build_prompt(cand_chain, g, variant, "recall") for g in gt_points]
 
     parsed = [parse_score(r) for r in judge.complete(prompts)] if prompts else []
     results = []

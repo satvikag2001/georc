@@ -11,13 +11,16 @@ from typing import Protocol
 
 # "paper": the GeoRC Fig. 14 rubric (default); "repo": the released score.py rubric (G1 fallback);
 # "paper_layout": Fig. 14's words in the released f-string's layout (formatting sensitivity check);
-# "repo_newlines": the released rubric with each chain on its own line (layout check).
+# "repo_newlines": the released rubric with each chain on its own line (layout check);
+# "repo_newlines_recall": the same, but recall calls ask for {"recall": <score>}.
 PROMPT_VARIANTS = {
     "paper": "judge_paper.txt",
     "repo": "judge_repo.txt",
     "paper_layout": "judge_paper_layout.txt",
     "repo_newlines": "judge_repo_newlines.txt",
+    "repo_newlines_recall": "judge_repo_newlines.txt",
 }
+RECALL_TEMPLATES = {"repo_newlines_recall": "judge_repo_newlines_recall.txt"}
 
 _JSON_OBJECT = re.compile(r"\{.*?\}", re.DOTALL)
 _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
@@ -28,9 +31,12 @@ def load_template(name: str) -> str:
     return (files("georc") / "templates" / name).read_text().removesuffix("\n")
 
 
-def build_prompt(first_chain: str, second_point: str, variant: str = "paper") -> str:
+def build_prompt(
+    first_chain: str, second_point: str, variant: str = "paper", direction: str = "precision"
+) -> str:
     """Fill a judge rubric. Plain replacement, so braces in chain text are left alone."""
-    template = load_template(PROMPT_VARIANTS[variant])
+    name = RECALL_TEMPLATES.get(variant) if direction == "recall" else None
+    template = load_template(name or PROMPT_VARIANTS[variant])
     return template.replace("{first_chain}", first_chain).replace("{second_point}", second_point)
 
 

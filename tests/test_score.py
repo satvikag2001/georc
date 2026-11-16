@@ -77,6 +77,34 @@ def test_repo_newlines_variant_only_moves_each_chain_onto_its_own_line():
     )
 
 
+def test_repo_newlines_recall_variant_asks_for_recall_only_on_recall_calls():
+    precision = build_prompt("A || B", "A", variant="repo_newlines_recall")
+    recall = build_prompt("A || B", "A", variant="repo_newlines_recall", direction="recall")
+    assert precision == build_prompt("A || B", "A", variant="repo_newlines")
+    assert recall == precision.replace('{"precision": <score>}', '{"recall": <score>}')
+    assert '{"recall": <score>}' in recall
+
+
+def test_direction_leaves_every_other_variant_unchanged():
+    for variant in ("paper", "repo", "paper_layout", "repo_newlines"):
+        assert build_prompt("A", "B", variant, direction="recall") == build_prompt(
+            "A", "B", variant
+        )
+
+
+def test_score_pairs_sends_recall_prompts_for_expert_points():
+    sent = []
+    judge = FunctionJudge(lambda p: sent.append(p) or '{"x": 50}')
+    score_pairs(
+        [("Cyrillic signage", "White tree trunks\nBlue sky")], judge, "repo_newlines_recall"
+    )
+    assert ['{"recall": <score>}' in p for p in sent] == [
+        False,
+        True,
+        True,
+    ]  # 1 candidate, 2 expert
+
+
 def test_one_to_all_scores_on_a_hand_computed_pair():
     candidate = "1. Cyrillic signage\n2. The sky is blue\n3. The road is paved"
     expert = "Cyrillic signage\nWhite tree trunks"
