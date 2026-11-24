@@ -27,7 +27,7 @@ RELEASED = ("qwen", "gemma3_12b", "llama3_11b", "qwen3", "hallucinated")
 GENERATED = ("G0", "A1")  # seed-0 chains under <out>/chains/<ID>/seed0
 EXPERTS = "experts"
 SETS = (*RELEASED, *GENERATED, EXPERTS)
-PASSES = ("experts", "pairwise", "specificity", "location", "grounded")
+PASSES = ("experts", "pairwise", "specificity", "location", "grounded", "evidence")
 VARIANT = "repo"
 GROUNDED_MAX_TOKENS = 512  # about 4 tokens per "N: yes" line; the longest chain has 51 points
 
@@ -286,6 +286,64 @@ def grounded_pass(chains: list[Chain], judge: Judge) -> list[dict]:
     ]
 
 
+def build_evidence_prompt(chain_points: Sequence[str], statement: str) -> str:
+    head, rest = load_template("evidence.txt").split("{chain}")
+    middle, tail = rest.split("{statement}")
+    return head + "\n".join(chain_points) + middle + statement + tail
+
+
+def parse_evidence(reply: str) -> list[dict] | None:
+    """The reply's (cue, location, inference, weight) sets with weights scaled to sum to 100; an
+    empty list if the statement has no evidence; None if the reply has no usable JSON list."""
+    start, end = reply.find("["), reply.rfind("]")
+    try:
+        items = json.loads(reply[start : end + 1]) if 0 <= start < end else None
+    except json.JSONDecodeError:
+        items = None
+    if not isinstance(items, list):
+        return None
+    sets = [i for i in items if isinstance(i, dict) and isinstance(i.get("cue"), str) and i["cue"]]
+    if len(sets) != len(items):
+        return None
+
+    def weight(item: dict) -> float:
+        value = item.get("weight")
+        return float(value) if isinstance(value, int | float) and value > 0 else 0.0
+
+    weights = [weight(i) for i in sets]
+    if not all(weights):  # a missing or zero weight: split evenly
+        weights = [1.0] * len(sets)
+    return [
+        {
+            "cue": i["cue"],
+            "location": i["location"] if isinstance(i.get("location"), str) else None,
+            "inference": i["inference"] if isinstance(i.get("inference"), str) else None,
+            "weight": 100 * w / sum(weights),
+        }
+        for i, w in zip(sets, weights, strict=True)
+    ]
+
+
+def evidence_pass(chains: list[Chain], judge: Judge) -> list[dict]:
+    """Evidence sets of every statement of the scored chains, judged with its chain as context."""
+    rows, prompts = [], []
+    for chain in chains:
+        points = extract_points(chain.text)
+        for index, statement in enumerate(points):
+            rows.append(
+                {
+                    "round": chain.round.key,
+                    "author": chain.author,
+                    "index": index,
+                    "statement": statement,
+                }
+            )
+            prompts.append(build_evidence_prompt(points, statement))
+    for row, reply in zip(rows, judge.complete(prompts), strict=True):
+        row["sets"] = parse_evidence(reply)
+    return rows
+
+
 def run_pass(pass_name: str, set_name: str, data: Path, out: Path, judge: Judge) -> Any:
     """Run one pass on one chain set; returns that pass function's result."""
     if pass_name == "experts" and set_name != EXPERTS:
@@ -301,6 +359,8 @@ def run_pass(pass_name: str, set_name: str, data: Path, out: Path, judge: Judge)
         return location_pass(chains, judge)
     if pass_name == "grounded":
         return grounded_pass(chains, judge)
+    if pass_name == "evidence":
+        return evidence_pass(chains, judge)
     raise ValueError(f"unknown pass {pass_name!r}")
 
 
@@ -345,6 +405,14 @@ def describe(pass_name: str, set_name: str, result: Any) -> str:
         return (
             f"{head}: pairs={len(result)} cells={len(cells)} mean={_mean(parsed):.2f}"
             f" unparsed={len(cells) - len(parsed)}"
+        )
+    if pass_name == "evidence":
+        parsed = [row["sets"] for row in result if row["sets"] is not None]
+        full = [sets for sets in parsed if sets]
+        return (
+            f"{head}: statements={len(result)} with_sets={len(full)}"
+            f" empty={len(parsed) - len(full)} unparsed={len(result) - len(parsed)}"
+            f" sets_per_statement={_mean([float(len(sets)) for sets in full]):.2f}"
         )
     if pass_name == "specificity":
         parsed = [s for s in result.values() if s is not None]

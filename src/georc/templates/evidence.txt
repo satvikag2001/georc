@@ -1,0 +1,18 @@
+Below is a reasoning chain written to guess where a street-level photo was taken, followed by ONE statement from that chain. Break the statement into evidence sets. Each set has four fields:
+- "cue": one thing visible in the photo that the statement uses as evidence, in the statement's own words. One object or feature per set.
+- "location": the place the statement says this cue points to. Use null if the statement draws no place from the cue.
+- "inference": in a few words, the reason the statement gives for why the cue points to that place. Use null if it gives no reason.
+- "weight": the share of the statement carried by this set, as a number from 0 to 100.
+Rules:
+1. If the statement uses several cues for the same place, make one set per cue and split the weight by how much the statement relies on each cue, equally if it does not say.
+2. If the statement names several possible places for a cue, make one set per place and split the weight by how sure the writer is of each place: the place the writer prefers gets the most, and a place that is only possible or is ruled out gets little.
+3. The weights of all the sets must add up to 100.
+4. If the statement cites nothing visible in the photo (for example a heading, an introduction or a bare final guess), respond with an empty list: [].
+5. Use the rest of the chain only to understand what the statement refers to. Do not take cues from other statements.
+Respond only with a JSON list. Two examples of the format:
+[{"cue": "red soil", "location": "Madagascar", "inference": "typical of the island's highlands", "weight": 50}, {"cue": "baobab trees", "location": "Madagascar", "inference": null, "weight": 50}]
+[{"cue": "yellow road markings", "location": "Chile", "inference": "the center line style looks more Chilean", "weight": 70}, {"cue": "yellow road markings", "location": "Argentina", "inference": "also uses yellow center lines", "weight": 30}]
+CHAIN:
+{chain}
+STATEMENT:
+{statement}

@@ -15,11 +15,13 @@ from georc.extras import (
     CacheOnly,
     Chain,
     Place,
+    build_evidence_prompt,
     build_location_prompt,
     build_specificity_prompt,
     cache_path,
     call_counts,
     describe,
+    evidence_pass,
     experts_pass,
     grounded_pass,
     grounded_request,
@@ -27,6 +29,7 @@ from georc.extras import (
     location_pass,
     pairwise_pass,
     paper_expert_pair,
+    parse_evidence,
     parse_location,
     parse_specificity,
     parse_verdicts,
@@ -442,3 +445,86 @@ def test_the_experts_pass_takes_only_the_experts_set(dataset):
         "--data", str(data), "--out", str(out), "--pass", "experts", "--sets", "qwen"
     )
     assert result.returncode == 2 and "experts" in result.stderr
+
+
+# evidence sets
+
+
+def test_evidence_prompt_shows_the_chain_then_the_statement_and_survives_braces():
+    prompt = build_evidence_prompt(
+        ["Sign reads {EXIT}", "Red soil {statement}"], "Sign reads {EXIT}"
+    )
+    assert prompt.endswith("STATEMENT:\nSign reads {EXIT}")
+    assert "CHAIN:\nSign reads {EXIT}\nRed soil {statement}\nSTATEMENT:" in prompt
+    assert '"cue"' in prompt and '"weight"' in prompt
+
+
+def test_parse_evidence_reads_sets_and_scales_weights_to_100():
+    reply = (
+        'Here: [{"cue": "hills", "location": "N. California", "inference": null, "weight": 30},'
+        ' {"cue": "homes", "location": "N. California", "inference": "style", "weight": 90}]'
+    )
+    assert parse_evidence(reply) == [
+        {"cue": "hills", "location": "N. California", "inference": None, "weight": 25.0},
+        {"cue": "homes", "location": "N. California", "inference": "style", "weight": 75.0},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        ("[]", []),
+        ("no json here", None),
+        ('{"cue": "hills"}', None),
+        ("[1, 2]", None),
+        ('[{"location": "India", "weight": 100}]', None),
+        (
+            '[{"cue": "blur", "location": "India"}, {"cue": "blur", "location": "Cambodia"}]',
+            [
+                {"cue": "blur", "location": "India", "inference": None, "weight": 50.0},
+                {"cue": "blur", "location": "Cambodia", "inference": None, "weight": 50.0},
+            ],
+        ),
+        (
+            '[{"cue": "blur", "location": "India", "weight": 0}, {"cue": "sky", "weight": "x"}]',
+            [
+                {"cue": "blur", "location": "India", "inference": None, "weight": 50.0},
+                {"cue": "sky", "location": None, "inference": None, "weight": 50.0},
+            ],
+        ),
+    ],
+)
+def test_parse_evidence_handles_empty_bad_and_unweighted_replies(reply, expected):
+    assert parse_evidence(reply) == expected
+
+
+def test_evidence_pass_gives_one_row_per_statement_with_the_whole_chain_as_context(dataset):
+    chains, _ = load_set(EXPERTS, *dataset)
+    prompts = []
+
+    def reply(prompt: str) -> str:
+        prompts.append(prompt)
+        return '[{"cue": "c", "location": "L", "inference": "i", "weight": 100}]'
+
+    rows = evidence_pass(chains, FunctionJudge(reply))
+    first = [r for r in rows if r["round"] == "abc_1" and r["author"] == "Human_Expert_1"]
+    assert [(r["index"], r["statement"]) for r in first] == [
+        (0, "Cyrillic signage"),
+        (1, "White tree trunks"),
+    ]
+    assert first[0]["sets"] == [{"cue": "c", "location": "L", "inference": "i", "weight": 100.0}]
+    asked = next(p for p in prompts if p.endswith("STATEMENT:\nWhite tree trunks"))
+    assert "CHAIN:\nCyrillic signage\nWhite tree trunks\nSTATEMENT:" in asked
+    assert "Kyrgyzstan" not in asked  # the conclusion is not part of the scored chain
+
+
+def test_evidence_is_a_pass_and_describe_counts_sets():
+    assert "evidence" in PASSES
+    rows = [
+        {"sets": [{"cue": "a"}, {"cue": "b"}]},
+        {"sets": []},
+        {"sets": None},
+    ]
+    assert describe("evidence", "experts", rows) == (
+        "evidence experts: statements=3 with_sets=1 empty=1 unparsed=1 sets_per_statement=2.00"
+    )
