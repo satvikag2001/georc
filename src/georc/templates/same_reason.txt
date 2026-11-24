@@ -1,0 +1,4 @@
+Two people each explained why something visible in a photo points to a place. Do the two explanations give the same reason? They can be worded differently.
+Answer with one word: yes or no.
+FIRST: {a}
+SECOND: {b}

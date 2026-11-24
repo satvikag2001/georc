@@ -1,0 +1,4 @@
+Two guesses about where a photo was taken are given below. Are they consistent, meaning they name the same place or one lies inside the other (for example "California" and "United States", or "Bishkek" and "Kyrgyzstan")? Two different places that do not contain one another are not consistent (for example "New Zealand" and "California").
+Answer with one word: yes or no.
+FIRST: {a}
+SECOND: {b}

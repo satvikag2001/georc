@@ -1,0 +1,4 @@
+Two people each described something they saw in the same street-level photo. Do the two descriptions refer to the same visible feature of the photo (the same object, surface, sign, plant or other thing)? They can be worded differently and can differ in detail. What matters is whether they are about the same thing in the photo. Ignore any place names.
+Answer with one word: yes or no.
+FIRST: {a}
+SECOND: {b}
