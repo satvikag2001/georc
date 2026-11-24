@@ -6,8 +6,9 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from georc.extras import RELEASED
+from georc.extras import RELEASED, CacheOnly
 from georc.judge import CachedJudge
+from georc.models import JUDGE_LARGE
 from georc.pool import run, table
 from georc.vllm_backend import VLLMJudge
 
@@ -20,11 +21,24 @@ def main() -> None:
     parser.add_argument("--cue-template", default="same_cue.txt")
     parser.add_argument("--both-orders", action="store_true")
     parser.add_argument("--name", default="pool_test", help="output folder under --out")
-    args = parser.parse_args()
-    judge = CachedJudge(
-        VLLMJudge(seed=0, greedy=True), args.out / "judge_cache" / "pool_greedy.jsonl"
+    parser.add_argument(
+        "--large-matcher",
+        action="store_true",
+        help="match with the 30B judge; splitting is read from the 4B judge's cache",
     )
-    result = run(args.data, args.out, judge, args.sets, args.cue_template, args.both_orders)
+    args = parser.parse_args()
+    cache = args.out / "judge_cache"
+    if args.large_matcher:
+        judge = CachedJudge(CacheOnly(), cache / "pool_greedy.jsonl")
+        matcher = CachedJudge(
+            VLLMJudge(seed=0, greedy=True, spec=JUDGE_LARGE, max_model_len=8192),
+            cache / "pool_large.jsonl",
+        )
+    else:
+        judge = matcher = CachedJudge(VLLMJudge(seed=0, greedy=True), cache / "pool_greedy.jsonl")
+    result = run(
+        args.data, args.out, judge, args.sets, args.cue_template, args.both_orders, matcher
+    )
     print(table(result["summary"]), flush=True)
     folder = args.out / args.name
     folder.mkdir(parents=True, exist_ok=True)

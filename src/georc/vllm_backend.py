@@ -8,7 +8,7 @@ from vllm import LLM, SamplingParams
 
 from georc.extras import split_request
 from georc.generate import image_messages
-from georc.models import GENERATORS, JUDGE
+from georc.models import GENERATORS, JUDGE, ModelSpec
 
 
 class VLLMJudge:
@@ -16,18 +16,24 @@ class VLLMJudge:
     the model's own sampling unless `greedy` (G1 fallback). The fixed per-request seed makes a
     prompt's reply reproducible, which the on-disk cache assumes."""
 
-    def __init__(self, seed: int = 0, greedy: bool = False) -> None:
+    def __init__(
+        self,
+        seed: int = 0,
+        greedy: bool = False,
+        spec: ModelSpec = JUDGE,
+        max_model_len: int = 32768,
+    ) -> None:
         self.llm = LLM(
-            model=JUDGE.repo,
-            revision=JUDGE.revision,
+            model=spec.repo,
+            revision=spec.revision,
             dtype="bfloat16",
-            max_model_len=32768,
+            max_model_len=max_model_len,
             gpu_memory_utilization=0.85,
             enable_prefix_caching=True,
             seed=seed,
         )
         params = self.llm.get_default_sampling_params()
-        params.max_tokens = JUDGE.max_tokens
+        params.max_tokens = spec.max_tokens
         params.seed = seed
         if greedy:
             params.temperature = 0.0

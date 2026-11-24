@@ -1,10 +1,10 @@
 import re
 
-from georc.models import GENERATORS, JUDGE
+from georc.models import GENERATORS, JUDGE, JUDGE_LARGE
 
 
 def test_every_model_is_pinned_to_a_full_commit_hash():
-    for spec in [*GENERATORS.values(), JUDGE]:
+    for spec in [*GENERATORS.values(), JUDGE, JUDGE_LARGE]:
         assert re.fullmatch(r"[0-9a-f]{40}", spec.revision), spec.repo
 
 
@@ -18,3 +18,8 @@ def test_judge_keeps_its_own_sampling_defaults():
     assert JUDGE.repo == "Qwen/Qwen3-4B-Instruct-2507"
     assert JUDGE.temperature is None
     assert JUDGE.max_tokens == 2048
+
+
+def test_large_judge_is_the_bigger_model_of_the_same_release():
+    assert JUDGE_LARGE.repo == "Qwen/Qwen3-30B-A3B-Instruct-2507"
+    assert JUDGE_LARGE.temperature is None

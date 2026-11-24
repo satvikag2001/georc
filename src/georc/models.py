@@ -38,3 +38,11 @@ JUDGE = ModelSpec(
     max_tokens=2048,
     temperature=None,
 )
+
+# A larger judge of the same release, for the pool test's matching step (about 61 GB in bf16).
+JUDGE_LARGE = ModelSpec(
+    repo="Qwen/Qwen3-30B-A3B-Instruct-2507",
+    revision="0d7cf23991f47feeb3a57ecb4c9cee8ea4a17bfe",
+    max_tokens=2048,
+    temperature=None,
+)

@@ -137,3 +137,12 @@ def test_run_takes_the_cue_question_as_a_parameter(dataset):
         both_orders=True,
     )
     assert any("SAME DISTINGUISHING DETAIL" in p for p in asked)
+
+
+def test_run_can_match_with_a_different_judge_than_it_splits_with(dataset):
+    split_prompts, match_prompts = [], []
+    splitter = FunctionJudge(lambda p: split_prompts.append(p) or fake_judge(p))
+    matcher = FunctionJudge(lambda p: match_prompts.append(p) or fake_judge(p))
+    run(*dataset, splitter, ["qwen"], match_judge=matcher)
+    assert split_prompts and all("STATEMENT:\n" in p for p in split_prompts)
+    assert match_prompts and all("FIRST: " in p for p in match_prompts)

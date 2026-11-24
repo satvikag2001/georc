@@ -160,8 +160,12 @@ def run(
     names: Sequence[str],
     cue_template: str = "same_cue.txt",
     both_orders: bool = False,
+    match_judge: Judge | None = None,
 ) -> dict[str, Any]:
-    """Extract, match and score the experts, the named chain sets and the random baseline."""
+    """Extract, match and score the experts, the named chain sets and the random baseline.
+    `judge` splits chains into sets; `match_judge` (default: the same) answers the yes/no
+    questions."""
+    match_judge = match_judge or judge
     expert_chains, _ = load_set(EXPERTS, data, out)
     by_round = defaultdict(list)
     for chain in expert_chains:
@@ -202,9 +206,9 @@ def run(
                         found.append((a, b))
         return found
 
-    same_cue = ask(cue_template, pairs(lambda s: s.cue, None), judge, both_orders)
-    same_place = ask("same_place.txt", pairs(lambda s: s.location, same_cue), judge)
-    same_reason = ask("same_reason.txt", pairs(reason_text, same_cue), judge)
+    same_cue = ask(cue_template, pairs(lambda s: s.cue, None), match_judge, both_orders)
+    same_place = ask("same_place.txt", pairs(lambda s: s.location, same_cue), match_judge)
+    same_reason = ask("same_reason.txt", pairs(reason_text, same_cue), match_judge)
 
     rows = []
     for name in sets:

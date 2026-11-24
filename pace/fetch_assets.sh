@@ -11,8 +11,9 @@ fetch_model() {
   "$PY" - "$1" <<'EOF'
 import sys
 from huggingface_hub import snapshot_download
-from georc.models import GENERATORS, JUDGE
-spec = {"qwen-vl": GENERATORS["qwen2.5-vl-7b"], "gemma": GENERATORS["gemma3-12b"], "judge": JUDGE}[sys.argv[1]]
+from georc.models import GENERATORS, JUDGE, JUDGE_LARGE
+specs = {"qwen-vl": GENERATORS["qwen2.5-vl-7b"], "gemma": GENERATORS["gemma3-12b"], "judge": JUDGE}
+spec = (specs | {"judge-large": JUDGE_LARGE})[sys.argv[1]]
 print(snapshot_download(spec.repo, revision=spec.revision))
 EOF
 }
@@ -21,7 +22,7 @@ for target in "${targets[@]}"; do
   echo "== $target"
   case "$target" in
     dataset) "$PY" "$GEORC_CODE/scripts/fetch_dataset.py" --out "$GEORC_DATA" ;;
-    qwen-vl | judge) fetch_model "$target" ;;
+    qwen-vl | judge | judge-large) fetch_model "$target" ;;
     gemma)
       [ -n "${HF_TOKEN:-}" ] || { echo "gemma is gated: put a read token in $GEORC_ROOT/.hf_token" >&2; exit 1; }
       fetch_model gemma ;;
