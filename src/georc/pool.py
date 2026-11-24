@@ -59,16 +59,25 @@ def extract_sets(chains: Sequence[Chain], judge: Judge) -> list[EvidenceSet]:
     return sets
 
 
-def ask(template: str, pairs: Sequence[tuple[str, str]], judge: Judge) -> Verdicts:
-    """Yes/no verdict per (first, second) pair, stored under both orders; None if unreadable."""
+def ask(
+    template: str, pairs: Sequence[tuple[str, str]], judge: Judge, both_orders: bool = False
+) -> Verdicts:
+    """Yes/no verdict per (first, second) pair, stored under both orders; None if unreadable.
+    With `both_orders` the question is asked each way round and a yes needs both."""
     head, rest = load_template(template).split("{a}")
     middle, tail = rest.split("{b}")
     unique = list(dict.fromkeys(pairs))
-    replies = judge.complete([head + a + middle + b + tail for a, b in unique]) if unique else []
+    asked = unique + [(b, a) for a, b in unique] if both_orders else unique
+    replies = judge.complete([head + a + middle + b + tail for a, b in asked]) if asked else []
+    found = [_YES_NO.match(reply) for reply in replies]
+    answers = [m.group(1).lower() == "yes" if m else None for m in found]
     verdicts: Verdicts = {}
-    for (a, b), reply in zip(unique, replies, strict=True):
-        found = _YES_NO.match(reply)
-        verdicts[(a, b)] = verdicts[(b, a)] = found.group(1).lower() == "yes" if found else None
+    for i, (a, b) in enumerate(unique):
+        verdict = answers[i]
+        if both_orders and verdict is not None:
+            other = answers[len(unique) + i]
+            verdict = None if other is None else verdict and other
+        verdicts[(a, b)] = verdicts[(b, a)] = verdict
     return verdicts
 
 
@@ -144,7 +153,14 @@ def score_chain(
     }
 
 
-def run(data: Path, out: Path, judge: Judge, names: Sequence[str]) -> dict[str, Any]:
+def run(
+    data: Path,
+    out: Path,
+    judge: Judge,
+    names: Sequence[str],
+    cue_template: str = "same_cue.txt",
+    both_orders: bool = False,
+) -> dict[str, Any]:
     """Extract, match and score the experts, the named chain sets and the random baseline."""
     expert_chains, _ = load_set(EXPERTS, data, out)
     by_round = defaultdict(list)
@@ -186,7 +202,7 @@ def run(data: Path, out: Path, judge: Judge, names: Sequence[str]) -> dict[str, 
                         found.append((a, b))
         return found
 
-    same_cue = ask("same_cue.txt", pairs(lambda s: s.cue, None), judge)
+    same_cue = ask(cue_template, pairs(lambda s: s.cue, None), judge, both_orders)
     same_place = ask("same_place.txt", pairs(lambda s: s.location, same_cue), judge)
     same_reason = ask("same_reason.txt", pairs(reason_text, same_cue), judge)
 

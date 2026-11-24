@@ -108,3 +108,32 @@ def test_run_scores_experts_leave_one_out_and_models_on_shared_rounds(dataset):
     assert qwen["coverage"] == pytest.approx(100 / 3)  # pool: Cyrillic, white trunks, grid plan
     assert {r["set"] for r in result["rows"]} == {"experts", "qwen", "random"}
     assert result["summary"]["experts"]["n"] == 6
+
+
+def test_ask_both_orders_needs_a_yes_in_each_direction():
+    replies = {
+        "FIRST: a\nSECOND: b": "yes",
+        "FIRST: b\nSECOND: a": "no",
+        "FIRST: a\nSECOND: c": "yes",
+    }
+    judge = FunctionJudge(lambda p: next((v for k, v in replies.items() if k in p), "yes"))
+    verdicts = ask("same_cue.txt", [("a", "b"), ("a", "c")], judge, both_orders=True)
+    assert verdicts[("a", "b")] is False and verdicts[("b", "a")] is False
+    assert verdicts[("a", "c")] is True
+
+
+def test_run_takes_the_cue_question_as_a_parameter(dataset):
+    asked = []
+
+    def judge(prompt: str) -> str:
+        asked.append(prompt)
+        return fake_judge(prompt)
+
+    run(
+        *dataset,
+        FunctionJudge(judge),
+        ["qwen"],
+        cue_template="same_cue_strict.txt",
+        both_orders=True,
+    )
+    assert any("SAME DISTINGUISHING DETAIL" in p for p in asked)

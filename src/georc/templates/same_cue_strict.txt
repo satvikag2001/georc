@@ -1,0 +1,13 @@
+Two short descriptions are given below. Each describes something seen in a street-level photo. Decide whether they describe the SAME KIND OF THING with the SAME DISTINGUISHING DETAIL, so that either one could stand for the same piece of evidence.
+Answer "yes" only if both are about the same object or feature (for example both about the soil, both about the road lines, or both about one sign) AND they agree on what is notable about it (its colour, type, shape, script, species and so on).
+Answer "no" if they are about different things (for example soil and a road, hills and buildings, a sign and a pole), if one is only a general impression (for example "the landscape", "the vegetation", "the architecture") while the other is a specific feature, or if the notable detail differs (for example red soil and dark soil).
+Examples:
+"red clay soil" / "reddish soil": yes
+"dark and moist soil" / "wide gravel road": no
+"landscape is relatively flat" / "gravel shoulder with fireweed": no
+"yellow centre line" / "double yellow line in the middle of the road": yes
+"type of vegetation" / "abundance of acai palms": no
+"signs in Cyrillic" / "Cyrillic writing on the gas station sign": yes
+Answer with one word: yes or no.
+FIRST: {a}
+SECOND: {b}
