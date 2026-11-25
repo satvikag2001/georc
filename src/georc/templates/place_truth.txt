@@ -1,0 +1,4 @@
+A street-level photo was taken at latitude {lat}, longitude {lng} (country code {code}).
+Someone guessed where it was taken. Is the guess correct, meaning the photo's true location lies inside the place named in the guess? A broad guess that contains the true location is correct (for example "Europe" or "the northern hemisphere" for a photo taken in France). A guess that names a different country, region or city from the true one is not correct. If the guess does not name a place, answer no.
+Answer with one word: yes or no.
+GUESS: {guess}

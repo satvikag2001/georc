@@ -3,7 +3,7 @@ import json
 import pytest
 
 from georc.judge import FunctionJudge
-from georc.pool import EvidenceSet, ask, clusters, extract_sets, run, score_chain
+from georc.pool import EvidenceSet, ask, ask_truth, clusters, extract_sets, run, score_chain
 
 EXPERTS = {
     "Human_Expert_1": "Round 1\nCyrillic signage\nWhite tree trunks\nConclusion\nKyrgyzstan\n"
@@ -146,3 +146,18 @@ def test_run_can_match_with_a_different_judge_than_it_splits_with(dataset):
     run(*dataset, splitter, ["qwen"], match_judge=matcher)
     assert split_prompts and all("STATEMENT:\n" in p for p in split_prompts)
     assert match_prompts and all("FIRST: " in p for p in match_prompts)
+
+
+def test_ask_truth_checks_each_distinct_guess_once_against_the_true_location():
+    asked = []
+
+    def judge(prompt: str) -> str:
+        asked.append(prompt)
+        return "yes" if "GUESS: California" in prompt else "No"
+
+    sets = [es("E1", "hills", "California"), es("E2", "homes", "California"), es("E1", "box")]
+    sets.append(es("E3", "trees", "New Zealand"))
+    verdicts = ask_truth(sets, {"r": (38.32, -123.03, "us")}, FunctionJudge(judge))
+    assert verdicts == {("r", "California"): True, ("r", "New Zealand"): False}
+    assert len(asked) == 2
+    assert "latitude 38.32, longitude -123.03" in asked[0] and "country code US" in asked[0]

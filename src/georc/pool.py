@@ -81,6 +81,23 @@ def ask(
     return verdicts
 
 
+def ask_truth(
+    sets: Sequence[EvidenceSet], places: dict[str, tuple[float, float, str]], judge: Judge
+) -> dict[tuple[str, str], bool | None]:
+    """Whether each (round, guessed location) is correct for the round's true (lat, lng, country
+    code): the true point lies inside the guessed place. None if the reply is unreadable."""
+    template = load_template("place_truth.txt")
+    keys = list(dict.fromkeys((s.round, s.location) for s in sets if s.location is not None))
+    prompts = []
+    for key, guess in keys:
+        lat, lng, code = places[key]
+        head = template.replace("{lat}", f"{lat:.2f}").replace("{lng}", f"{lng:.2f}")
+        prompts.append(head.replace("{code}", code.upper()).replace("{guess}", guess))
+    replies = judge.complete(prompts) if prompts else []
+    found = [_YES_NO.match(reply) for reply in replies]
+    return {k: m.group(1).lower() == "yes" if m else None for k, m in zip(keys, found, strict=True)}
+
+
 def _same(verdicts: Verdicts, a: str, b: str) -> bool:
     return a == b or bool(verdicts.get((a, b)))
 
